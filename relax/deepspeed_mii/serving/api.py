@@ -4,7 +4,7 @@ import grpc
 from relax.deepspeed_mii.serving.handler import Handler
 from relax.deepspeed_mii.serving.schema import ModelInferRequest
 from mii.grpc_related.proto.modelresponse_pb2_grpc import ModelResponseStub
-from mii.grpc_related.task_methods import multi_string_request_to_proto
+from mii.grpc_related.task_methods import single_string_request_to_proto
 from fastapi.responses import JSONResponse
 
 handler = Handler()
@@ -21,7 +21,7 @@ async def generate(request: ModelInferRequest) -> Any:
 
     channel = grpc.aio.insecure_channel("localhost:50050")
     stub = ModelResponseStub(channel)
-    requestData = multi_string_request_to_proto(self=None, request_dict=request.model_dump())
+    requestData = single_string_request_to_proto(self=None, request_dict=request.model_dump(), **(request.model_dump()))
 
     # Non-streaming case
     responseData = await stub.GeneratorReply(requestData)
