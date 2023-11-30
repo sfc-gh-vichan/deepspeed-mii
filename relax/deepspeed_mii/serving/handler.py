@@ -37,3 +37,4 @@ class Handler:
                 tensor_parallel=deployment_config.tensor_parallel,
                 replica_num=deployment_config.replica_num,
             )
+            self.client = mii.client(deployment_config.model_name)
