@@ -25,4 +25,4 @@ async def generate(req: ModelInferRequest) -> Any:
     stub = ModelResponseStub(channel)
     requestData = single_string_request_to_proto(self=None, request_dict={"query": req.prompts})
     responseData = await stub.GeneratorReply(requestData)
-    return {"text": responseData.response[0]}
+    return {"text": repr(responseData.response[0])}
