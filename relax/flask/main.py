@@ -8,7 +8,7 @@ app = Flask(__name__)
 
 @app.route('/generate', methods=['POST'])
 def _generate():
-    model_responses = handler.client.generate(request.prompts)
+    model_responses = handler.client.generate(request.form['prompts'])
     return {"model_outputs": [resp.generated_text for resp in model_responses]}
 
 if __name__ == "__main__":
