@@ -7,6 +7,7 @@ from relax.deepspeed_mii.serving.schema import ModelInferRequest
 from mii.grpc_related.proto.modelresponse_pb2_grpc import ModelResponseStub
 from mii.grpc_related.task_methods import single_string_request_to_proto
 from fastapi.responses import JSONResponse
+from google.protobuf.json_format import MessageToJson
 
 handler = Handler()
 app = FastAPI()
@@ -25,4 +26,4 @@ async def generate(req: ModelInferRequest) -> Any:
     stub = ModelResponseStub(channel)
     requestData = single_string_request_to_proto(self=None, request_dict={"query": req.prompts})
     responseData = await stub.GeneratorReply(requestData)
-    return {"text": repr(responseData.response[0])}
+    return {"text": MessageToJson(responseData.response[0])}
