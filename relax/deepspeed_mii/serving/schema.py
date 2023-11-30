@@ -2,7 +2,7 @@ from typing import List
 from pydantic import BaseModel
 
 class ModelInferRequest(BaseModel):
-    query: str
+    prompts: str
     max_new_tokens: int | None = 128
     top_p: float = 0.0
     top_k: int | None = None
