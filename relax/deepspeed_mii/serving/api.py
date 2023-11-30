@@ -10,5 +10,5 @@ app = FastAPI()
 
 @app.post("/")
 async def serve(req: ModelInferRequest) -> Any:
-    model_responses = handler.client.generate(req.prompts)
+    model_responses = await handler.client.generate(req.prompts)
     return {"model_outputs": [resp.generated_text for resp in model_responses]}
