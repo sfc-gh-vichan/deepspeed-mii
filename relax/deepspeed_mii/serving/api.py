@@ -20,7 +20,7 @@ async def serve(req: ModelInferRequest) -> Any:
 async def generate(req: ModelInferRequest) -> Any:    
     channel = grpc.aio.insecure_channel("localhost:50050")
     stub = ModelResponseStub(channel)
-    requestData = single_string_request_to_proto(self=None, request_dict={"query": req.prompt})
+    requestData = single_string_request_to_proto(self=None, request_dict={"query": req.prompts})
     responseData = await stub.GeneratorReply(requestData)
     result = {"text": responseData.response[0]}
     return JSONResponse(result)
