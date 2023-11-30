@@ -26,4 +26,6 @@ async def generate(req: ModelInferRequest) -> Any:
     requestData = single_string_request_to_proto(self=None, request_dict={"query": req.prompts})
     responseData = await stub.GeneratorReply(requestData)
     result = {"text": responseData.response[0]}
+    logger.info(result)
+    print(result)
     return JSONResponse(result)
