@@ -1,9 +1,11 @@
 from typing import Any
 from fastapi import FastAPI
+import grpc
 from relax.deepspeed_mii.serving.handler import Handler
 from relax.deepspeed_mii.serving.schema import ModelInferRequest
-import nest_asyncio
-nest_asyncio.apply()
+from mii.grpc_related.proto.modelresponse_pb2_grpc import ModelResponseStub
+from mii.grpc_related.task_methods import single_string_request_to_proto
+from fastapi.responses import JSONResponse
 
 handler = Handler()
 app = FastAPI()
@@ -12,3 +14,13 @@ app = FastAPI()
 async def serve(req: ModelInferRequest) -> Any:
     model_responses = await handler.client.generate(req.prompts)
     return {"model_outputs": [resp.generated_text for resp in model_responses]}
+
+
+@app.post("/generate")
+async def generate(req: ModelInferRequest) -> Any:    
+    channel = grpc.aio.insecure_channel("localhost:50050")
+    stub = ModelResponseStub(channel)
+    requestData = single_string_request_to_proto(self=None, request_dict={"query": req.prompt})
+    responseData = await stub.GeneratorReply(requestData)
+    result = {"text": responseData.response[0]}
+    return JSONResponse(result)
