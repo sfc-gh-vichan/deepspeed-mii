@@ -3,6 +3,7 @@ import json
 import os
 from pathlib import Path
 from relax.flask.args import args
+from threading import Thread, Lock
 
 from dacite import from_dict
 import mii
@@ -37,3 +38,4 @@ class Handler:
                 tensor_parallel=deployment_config.tensor_parallel,
                 replica_num=deployment_config.replica_num,
             )
+            self.mutex = Lock()
