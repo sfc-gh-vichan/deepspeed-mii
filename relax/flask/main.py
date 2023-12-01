@@ -31,5 +31,5 @@ if __name__ == "__main__":
             port=args.port,
             app=app,
         ).serve_forever()
-    except Exception as e:
+    except BaseException as e:
         handler.client.terminate_server()
