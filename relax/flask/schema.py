@@ -7,8 +7,9 @@ class GenerateSchema(Schema):
     min_new_tokens = fields.Integer()
     max_new_tokens = fields.Integer()
     ignore_eos = fields.Boolean()
-    # Make top_p and top_k incompatible parameters
     top_p = fields.Float()
+    # Validate top_k value > 0
+    # https://github.com/microsoft/DeepSpeed-MII/issues/338
     top_k = fields.Integer()
     temperature = fields.Float()
     do_sample = fields.Boolean()

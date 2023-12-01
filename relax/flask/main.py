@@ -18,7 +18,6 @@ def _generate():
     request_data = request.get_json()
     try:
         generate_kwargs = schema.load(request_data)
-        print(generate_kwargs)
         model_responses = handler.client.generate(**generate_kwargs)
         return {"model_outputs": [resp.__dict__ for resp in model_responses]}
     except ValidationError as e:
@@ -26,18 +25,10 @@ def _generate():
     except Exception as e:
         return {"error": e.messages}, HTTPStatus.INTERNAL_SERVER_ERROR
 
-@app.route('/terminate', methods=['POST'])
-def _terminate():
-    handler.client.terminate_server()
-    return {"response": "ok"}
 
 if __name__ == "__main__":
-    try:
-        server = make_server(
-            host="0.0.0.0",
-            port=args.port,
-            app=app,
-        ).serve_forever()
-    except BaseException as e:
-        print("terminating server")
-        handler.client.terminate_server()
+    server = make_server(
+        host="0.0.0.0",
+        port=args.port,
+        app=app,
+    ).serve_forever()
