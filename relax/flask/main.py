@@ -25,8 +25,11 @@ def _generate():
 
 
 if __name__ == "__main__":
-    server = make_server(
-        host="0.0.0.0",
-        port=args.port,
-        app=app,
-    ).serve_forever()
+    try:
+        server = make_server(
+            host="0.0.0.0",
+            port=args.port,
+            app=app,
+        ).serve_forever()
+    except Exception as e:
+        handler.client.terminate_server()
