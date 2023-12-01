@@ -27,7 +27,7 @@ class Handler:
             replica_num=deployment_config.replica_num,
         )
 
-    def _load_deployment_config() -> DeploymentConfig:
+    def _load_deployment_config(self) -> DeploymentConfig:
         path = args.model_repository
         p = Path(path)
         model_name = ""
