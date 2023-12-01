@@ -18,6 +18,16 @@ class DeploymentConfig:
 
 class Handler:
     def __init__(self) -> None:
+        self.mutex = Lock()
+        deployment_config = self._load_deployment_config()
+        self.client = mii.serve(
+            model_name_or_path=os.path.join(path, model_name),
+            deployment_name=deployment_config.model_name,
+            tensor_parallel=deployment_config.tensor_parallel,
+            replica_num=deployment_config.replica_num,
+        )
+
+    def _load_deployment_config() -> DeploymentConfig:
         path = args.model_repository
         p = Path(path)
         model_name = ""
@@ -31,11 +41,4 @@ class Handler:
         deployment_config_file_path = os.path.join(path, model_name, "deployment_config.json")
         with open(deployment_config_file_path) as f:
             config = json.load(f)
-            deployment_config = from_dict(data_class=DeploymentConfig, data=config)
-            self.client = mii.serve(
-                model_name_or_path=os.path.join(path, model_name),
-                deployment_name=deployment_config.model_name,
-                tensor_parallel=deployment_config.tensor_parallel,
-                replica_num=deployment_config.replica_num,
-            )
-            self.mutex = Lock()
+            return from_dict(data_class=DeploymentConfig, data=config)

@@ -1,6 +1,9 @@
 from flask import Flask, request
 from relax.flask.handler import Handler
 from relax.flask.args import args
+from werkzeug.serving import make_server
+
+
 handler = Handler()
 
 app = Flask(__name__)
@@ -14,4 +17,11 @@ def _generate():
     return {"model_outputs": [resp.__dict__ for resp in model_responses]}
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=args.port)
+    server = make_server(
+        "0.0.0.0",
+        args.port,
+        app,
+        threaded=False,
+        processes=1,
+    )
+    server.serve_forever()
