@@ -3,7 +3,6 @@ import json
 import os
 from pathlib import Path
 from relax.flask.args import args
-from threading import Thread, Lock
 
 from dacite import from_dict
 import mii
@@ -18,18 +17,17 @@ class DeploymentConfig:
 
 class Handler:
     def __init__(self) -> None:
-        self.mutex = Lock()
-        path = args.model_repository
-        p = Path(path)
-        deployment_config = self._load_deployment_config(p=p)
+        model_path = args.model_repository
+        deployment_config = self._load_deployment_config(model_path=model_path)
         self.client = mii.serve(
-            model_name_or_path=os.path.join(path, self.model_name),
+            model_name_or_path=os.path.join(model_path, self.model_name),
             deployment_name=deployment_config.model_name,
             tensor_parallel=deployment_config.tensor_parallel,
             replica_num=deployment_config.replica_num,
         )
 
-    def _load_deployment_config(self, p: Path) -> DeploymentConfig:
+    def _load_deployment_config(self, model_path: str) -> DeploymentConfig:
+        p = Path(model_path)
         for f in p.iterdir():
             if f.is_dir():
                 self.model_name = f.name

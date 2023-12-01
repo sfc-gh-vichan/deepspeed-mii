@@ -11,10 +11,9 @@ app = Flask(__name__)
 @app.route('/generate', methods=['POST'])
 def _generate():
     data = request.get_json()
-    # handler.mutex.acquire()
     model_responses = handler.client.generate(data["prompts"])
-    # handler.mutex.release()
     return {"model_outputs": [resp.__dict__ for resp in model_responses]}
+
 
 if __name__ == "__main__":
     server = make_server(
