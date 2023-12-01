@@ -11,7 +11,7 @@ handler = Handler()
 
 app = Flask(__name__)
 
-app.teardown_appcontext(handler.client.terminate_server())
+app.teardown_appcontext_funcs.append(handler.client.terminate_server())
 
 @app.route('/generate', methods=['POST'])
 def _generate():
