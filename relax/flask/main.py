@@ -32,4 +32,5 @@ if __name__ == "__main__":
             app=app,
         ).serve_forever()
     except BaseException as e:
+        print("terminating server")
         handler.client.terminate_server()
