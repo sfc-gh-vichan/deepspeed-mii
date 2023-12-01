@@ -13,9 +13,9 @@ app = Flask(__name__)
 def _generate():
     schema = GenerateSchema()
     request_data = request.get_json()
-    result = schema.load(request_data)
-    print(result)
-    model_responses = handler.client.generate(data["prompts"])
+    generate_kwargs = schema.load(request_data)
+    print(generate_kwargs)
+    model_responses = handler.client.generate(**generate_kwargs)
     return {"model_outputs": [resp.__dict__ for resp in model_responses]}
 
 
