@@ -20,5 +20,5 @@ if __name__ == "__main__":
     server = make_server(
         host="0.0.0.0",
         port=args.port,
-        application=app,
+        app=app,
     ).serve_forever()
