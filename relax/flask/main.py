@@ -4,6 +4,7 @@ from relax.flask.args import args
 from werkzeug.serving import make_server
 from relax.flask.schema import GenerateSchema
 from http import HTTPStatus
+from marshmallow.exceptions import ValidationError
 
 
 handler = Handler()
@@ -14,10 +15,13 @@ app = Flask(__name__)
 def _generate():
     schema = GenerateSchema()
     request_data = request.get_json()
-    generate_kwargs = schema.load(request_data)
-    print(generate_kwargs)
-    model_responses = handler.client.generate(**generate_kwargs)
-    return {"model_outputs": [resp.__dict__ for resp in model_responses]}
+    try:
+        generate_kwargs = schema.load(request_data)
+        print(generate_kwargs)
+        model_responses = handler.client.generate(**generate_kwargs)
+        return {"model_outputs": [resp.__dict__ for resp in model_responses]}
+    except ValidationError as e:
+        return {"error": repr(e)}
 
 
 if __name__ == "__main__":
