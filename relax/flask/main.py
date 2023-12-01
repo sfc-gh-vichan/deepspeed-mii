@@ -11,6 +11,8 @@ handler = Handler()
 
 app = Flask(__name__)
 
+app.teardown_appcontext(handler.client.terminate_server())
+
 @app.route('/generate', methods=['POST'])
 def _generate():
     schema = GenerateSchema()
