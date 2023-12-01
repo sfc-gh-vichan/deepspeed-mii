@@ -3,6 +3,7 @@ from relax.flask.handler import Handler
 from relax.flask.args import args
 from werkzeug.serving import make_server
 from relax.flask.schema import GenerateSchema
+from http import HTTPStatus
 
 
 handler = Handler()
