@@ -21,7 +21,7 @@ def _generate():
         model_responses = handler.client.generate(**generate_kwargs)
         return {"model_outputs": [resp.__dict__ for resp in model_responses]}
     except ValidationError as e:
-        return {"error": repr(e)}
+        return {"error": e.messages}
 
 
 if __name__ == "__main__":
