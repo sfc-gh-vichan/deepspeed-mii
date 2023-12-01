@@ -33,8 +33,7 @@ class Handler:
                 self.model_name = f.name
                 break
         if len(self.model_name) == 0:
-            # model does not exist
-            pass
+            raise ValueError(f"No model was found in {model_path}")
         deployment_config_file_path = os.path.join(p, self.model_name, "deployment_config.json")
         with open(deployment_config_file_path) as f:
             config = json.load(f)
