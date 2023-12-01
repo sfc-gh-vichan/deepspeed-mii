@@ -18,7 +18,7 @@ def _generate():
 
 if __name__ == "__main__":
     server = make_server(
-        hostname="0.0.0.0",
+        host="0.0.0.0",
         port=args.port,
         application=app,
     ).serve_forever()
