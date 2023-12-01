@@ -5,13 +5,12 @@ from werkzeug.serving import make_server
 from relax.flask.schema import GenerateSchema
 from http import HTTPStatus
 from marshmallow.exceptions import ValidationError
-
+import atexit
 
 handler = Handler()
+atexit.register(handler.client.terminate_server())
 
 app = Flask(__name__)
-
-app.teardown_appcontext_funcs.append(handler.client.terminate_server())
 
 @app.route('/generate', methods=['POST'])
 def _generate():
