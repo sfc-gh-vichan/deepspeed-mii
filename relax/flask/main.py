@@ -25,7 +25,7 @@ def _generate():
     except Exception as e:
         return {"error": e.messages}, HTTPStatus.INTERNAL_SERVER_ERROR
 
-@app.route('/terminate', methods=['GET, POST'])
+@app.route('/terminate', methods=['POST'])
 def _terminate():
     handler.client.terminate_server()
     return {"response": "ok"}
