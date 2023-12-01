@@ -22,6 +22,8 @@ def _generate():
         return {"model_outputs": [resp.__dict__ for resp in model_responses]}
     except ValidationError as e:
         return {"error": e.messages}, HTTPStatus.BAD_REQUEST
+    except Exception as e:
+        return {"error": e.messages}, HTTPStatus.INTERNAL_SERVER_ERROR
 
 
 if __name__ == "__main__":
