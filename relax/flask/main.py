@@ -8,7 +8,7 @@ from marshmallow.exceptions import ValidationError
 import atexit
 
 handler = Handler()
-atexit.register(handler.client.terminate_server())
+atexit.register(handler.client.terminate_server)
 
 app = Flask(__name__)
 
