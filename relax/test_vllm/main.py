@@ -24,8 +24,8 @@ sampling_params = SamplingParams(temperature=0,  # get rid of nondeterminism.
 
 results_generator = engine.generate(["asdf"], sampling_params, "1")
 
-async def stream_results():
-    async for request_output in results_generator:
+def stream_results():
+    for request_output in results_generator:
         prompt = request_output.prompt
         text_outputs = [
             prompt + output.text for output in request_output.outputs
@@ -34,4 +34,3 @@ async def stream_results():
         print(ret)
         yield ret
 
-stream_results()
