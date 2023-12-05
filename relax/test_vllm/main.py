@@ -56,9 +56,11 @@ async def main():
     print("ttft: " + "{:.3f}".format(ttft))
     print("total_time: " + "{:.2f}".format(total_time))
     print(full_output)
+    return "test"
 
 
-asyncio.run(main())
+test = asyncio.run(main())
+print(test)
 
 try:
     # Destroy
