@@ -28,7 +28,6 @@ results_generator = engine.generate("asdf", sampling_params, "")
 
 async def stream_results():
     full_output = ""
-    prev_len = 0
     async for request_output in results_generator:
         output = ""
         text_outputs = [output.text for output in request_output.outputs]
@@ -36,6 +35,7 @@ async def stream_results():
             output += texts[len(full_output):]
         full_output += output
         yield output
+    print(full_output)
 
 # results = stream_results()
 
