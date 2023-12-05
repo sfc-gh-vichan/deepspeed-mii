@@ -44,7 +44,7 @@ if __name__ == "__main__":
         
         sampling_params = {
             "max_new_tokens": 50,
-            "temperature": 0,  
+            "temperature": 1.0,  
             "do_sample": False
         }
 
