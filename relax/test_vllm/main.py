@@ -8,11 +8,13 @@ from vllm.engine.arg_utils import AsyncEngineArgs
 from vllm.engine.async_llm_engine import AsyncLLMEngine
 from vllm.sampling_params import SamplingParams
 from vllm.model_executor.parallel_utils.parallel_state import destroy_model_parallel
+from transformers import AutoTokenizer
 
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--host", type=str, default="0.0.0.0")
 parser.add_argument("--port", type=int, default=8000)
+parser.add_argument("--model", type=str)
 parser = AsyncEngineArgs.add_cli_args(parser)
 args = parser.parse_args()
 engine_args = AsyncEngineArgs.from_cli_args(args)
@@ -27,7 +29,10 @@ sampling_params = SamplingParams(
     max_tokens=1024
 )
 
+tokenizer = AutoTokenizer.from_pretrained(args.model)
 results_generator = engine.generate("asdf", sampling_params, "")
+input_ids = tokenizer.encode("asdf")
+print(len(input_ids))
 
 
 async def stream_results():
@@ -43,6 +48,7 @@ async def stream_results():
 
 
 async def main():
+    
     first = True
     ttft = None
     total_time = None
