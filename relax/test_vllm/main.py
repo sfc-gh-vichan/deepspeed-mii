@@ -43,10 +43,10 @@ async def stream_results():
 
 async def main():
     first = True
-    start = time.time()
     ttft = None
     total_time = None
-    full_output = result
+    full_output = ""
+    start = time.time()
     async for result in stream_results():
         if first:
             ttft = time.time() - start
