@@ -34,9 +34,10 @@ async def stream_results():
     full_output = ""
     async for request_output in results_generator:
         output = ""
-        text_outputs = [output.text for output in request_output.outputs]
-        for texts in text_outputs:
-            output += texts[len(full_output):]
+        text_outputs = [output for output in request_output.outputs]
+        print(text_outputs)
+        # for texts in text_outputs:
+        #     output += texts[len(full_output):]
         full_output += output
         yield output
 
@@ -48,10 +49,11 @@ async def main():
     full_output = ""
     start = time.time()
     async for result in stream_results():
-        if first:
-            ttft = time.time() - start
-            first = False
-        full_output += result
+        pass
+        # if first:
+        #     ttft = time.time() - start
+        #     first = False
+        # full_output += result
     total_time = time.time() - start
     print("ttft: " + "{:.3f}".format(ttft))
     print("total_time: " + "{:.2f}".format(total_time))
