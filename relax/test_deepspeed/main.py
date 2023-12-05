@@ -38,14 +38,14 @@ if __name__ == "__main__":
             replica_num=deployment_config.replica_num,
         )
 
-        out_tokens = []
+        responses = []
         def callback(response):
             print(type(response[0]))
             print(response[0])
-            out_tokens.append(response[0])
+            responses.append(response[0])
         
         sampling_params = {
-            "max_new_tokens": 50,
+            "max_new_tokens": 1024,
             "temperature": 1.0,  
             "top_p": 1.0,
             "top_k": 1,
@@ -54,14 +54,14 @@ if __name__ == "__main__":
 
         result_queue = []
         results = client.generate(
-            prompts="Hello, my name is ",
+            prompts="asdf",
             streaming_fn=callback,
             **sampling_params,
         )
 
-        print([out_token.to_msg_dict() for out_token in out_tokens])
+        print([out_token.to_msg_dict() for out_token in responses])
 
-        print(' '.join([out_token.generated_text for out_token in out_tokens]))
+        print(' '.join([out_token.generated_text for out_token in responses]))
     except Exception as e:
         print(repr(e))
     finally:
