@@ -43,8 +43,8 @@ if __name__ == "__main__":
             responses.append(response[0])
         
         sampling_params = {
-            "max_new_tokens": 1024,
-            "temperature": 1.0,  
+            "max_new_tokens": 50,
+            "temperature": 0,  
             "do_sample": False
         }
 
