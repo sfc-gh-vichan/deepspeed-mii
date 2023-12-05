@@ -55,6 +55,7 @@ async def main():
     total_time = time.time() - start
     print("ttft: " + "{:.3f}".format(ttft))
     print("total_time: " + "{:.2f}".format(total_time))
+    print(full_output)
 
 
 asyncio.run(main())
