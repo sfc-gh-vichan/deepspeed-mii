@@ -45,12 +45,15 @@ if __name__ == "__main__":
         
         sampling_params = {
             "max_new_tokens": 50,
+            "temperature": 0,  
+            "top_p": 1.0,
+            "top_k": -1,
             "do_sample": False
         }
 
         result_queue = []
         results = client.generate(
-            prompts="asdf",
+            prompts="Hello, my name is ",
             streaming_fn=callback,
             **sampling_params,
         )
