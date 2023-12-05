@@ -43,7 +43,7 @@ async def stream_results():
         # for texts in text_outputs:
         #     output += texts[len(full_output):]
         full_output += output
-        yield output
+        yield output[0]
 
 
 async def main():
@@ -53,16 +53,19 @@ async def main():
     total_time = None
     full_output = ""
     start = time.time()
+    last_output_input_ids = 0
     async for result in stream_results():
-        pass
+        last_output_input_ids = len(result.token_ids)
         # if first:
         #     ttft = time.time() - start
         #     first = False
         # full_output += result
     total_time = time.time() - start
-    print("ttft: " + "{:.3f}".format(ttft))
+    # print("ttft: " + "{:.3f}".format(ttft))
     print("total_time: " + "{:.2f}".format(total_time))
     print(full_output)
+    print(len(input_ids))
+    print(last_output_input_ids - len(input_ids))
     return "test"
 
 
