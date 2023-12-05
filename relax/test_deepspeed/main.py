@@ -8,8 +8,6 @@ from relax.test_deepspeed.args import args
 
 from dacite import from_dict
 import mii
-import nest_asyncio
-nest_asyncio.apply()
 
 @dataclass
 class DeploymentConfig:
