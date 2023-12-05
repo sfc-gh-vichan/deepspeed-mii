@@ -40,7 +40,6 @@ async def stream_results():
         outputs = [output for output in request_output.outputs]
         # for texts in text_outputs:
         #     output += texts[len(full_output):]
-        print(outputs[0])
         yield outputs[0]
 
 
@@ -57,7 +56,7 @@ async def main():
         # if first:
         #     ttft = time.time() - start
         #     first = False
-        # full_output += result
+        full_output += result.text
     total_time = time.time() - start
     # print("ttft: " + "{:.3f}".format(ttft))
     print("total_time: " + "{:.2f}".format(total_time))
