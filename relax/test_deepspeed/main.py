@@ -40,7 +40,7 @@ if __name__ == "__main__":
 
         out_tokens = []
         def callback(response):
-            print(response[0])
+            print(response)
             out_tokens.append(response[0])
         
         sampling_params = {
@@ -55,7 +55,7 @@ if __name__ == "__main__":
             **sampling_params,
         )
 
-        print(' '.join([out_token.generated_text for out_token in out_tokens]))
+        print(''.join([out_token.generated_text for out_token in out_tokens]))
     except Exception as e:
         print(repr(e))
     finally:
