@@ -24,7 +24,7 @@ sampling_params = SamplingParams(temperature=0,  # get rid of nondeterminism.
     max_tokens=1024
 )
 
-results_generator = engine.generate("asdf", sampling_params, "1")
+results_generator = engine.generate(["asdf"], sampling_params, "1")
 
 
 async def stream_results():
