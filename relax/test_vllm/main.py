@@ -28,13 +28,14 @@ results_generator = engine.generate(["asdf"], sampling_params, "1")
 print("generating...")
 
 def stream_results():
+    print("streaming results...")
     for request_output in results_generator:
         prompt = request_output.prompt
+        print(prompt)
         text_outputs = [
             prompt + output.text for output in request_output.outputs
         ]
         ret = {"text": text_outputs}
-        print(ret)
         yield ret
 
 stream_results()
