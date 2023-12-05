@@ -31,6 +31,7 @@ async def stream_results():
     prev_len = 0
     async for request_output in results_generator:
         text_outputs = [output.text for output in request_output.outputs]
+        print(len(text_outputs))
         for texts in text_outputs:
             full_output += texts
         output = full_output[prev_len:]
