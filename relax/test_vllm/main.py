@@ -27,9 +27,9 @@ results_generator = engine.generate(["asdf"], sampling_params, "1")
 
 print("generating...")
 
-def stream_results():
+async def stream_results():
     print("streaming results...")
-    for request_output in results_generator:
+    async for request_output in results_generator:
         prompt = request_output.prompt
         print(prompt)
         text_outputs = [
@@ -41,6 +41,5 @@ def stream_results():
 results = stream_results()
 
 print(results)
-
 
 sleep(1000)
