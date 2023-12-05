@@ -13,6 +13,11 @@ class DeploymentConfig:
     tensor_parallel: int
     replica_num: int
 
+
+async def stream(response):
+    yield response
+
+
 if __name__ == "__main__":
     path = args.model_repository
     p = Path(path)
@@ -36,4 +41,9 @@ if __name__ == "__main__":
         enable_restful_api=True,
         restful_api_port=args.port,
     )
+    client.generate(
+        prompts="asdf",
+        streaming_fn=stream,
+    )
+    client.terminate()
     f.close()
