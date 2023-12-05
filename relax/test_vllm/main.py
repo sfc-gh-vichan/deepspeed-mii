@@ -45,6 +45,7 @@ async def stream_results():
 # sleep(1000)
 
 async def main():
-    await stream_results()
+    for result in stream_results():
+        print(result)
 
 asyncio.run(main())
