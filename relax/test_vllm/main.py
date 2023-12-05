@@ -53,7 +53,7 @@ asyncio.run(main())
 try:
     # Destroy
     destroy_model_parallel()
-    del llm
+    del engine
     gc.collect()
     torch.cuda.empty_cache()
     torch.distributed.destroy_process_group()
