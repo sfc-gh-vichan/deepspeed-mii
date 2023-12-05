@@ -36,9 +36,11 @@ def stream_results():
             prompt + output.text for output in request_output.outputs
         ]
         ret = {"text": text_outputs}
-        yield ret
+        return ret
 
-stream_results()
+results = stream_results()
+
+print(results)
 
 
 sleep(1000)
