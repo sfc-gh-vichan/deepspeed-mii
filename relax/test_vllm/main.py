@@ -50,6 +50,10 @@ async def stream_results():
     print("ttft: " + "{:.3f}".format(ttft))
     print("total_time: " + "{:.2f}".format(total_time))
 
+
+async def main():
+    await stream_results()
+
 asyncio.run(stream_results())
 
 try:
