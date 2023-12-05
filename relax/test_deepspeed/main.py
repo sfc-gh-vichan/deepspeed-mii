@@ -2,7 +2,7 @@ from dataclasses import dataclass
 import json
 import os
 from pathlib import Path
-from relax.test.args import args
+from relax.test_deepspeed.args import args
 
 from dacite import from_dict
 import mii
