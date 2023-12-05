@@ -5,7 +5,6 @@ import asyncio
 from vllm.engine.arg_utils import AsyncEngineArgs
 from vllm.engine.async_llm_engine import AsyncLLMEngine
 from vllm.sampling_params import SamplingParams
-from vllm.utils import random_uuid
 
 
 parser = argparse.ArgumentParser()
@@ -24,7 +23,7 @@ sampling_params = SamplingParams(temperature=0,  # get rid of nondeterminism.
     max_tokens=1024
 )
 
-results_generator = engine.generate(["asdf"], sampling_params, "1")
+results_generator = engine.generate("asdf", sampling_params, "")
 
 
 async def stream_results():
