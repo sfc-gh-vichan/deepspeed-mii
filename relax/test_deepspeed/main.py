@@ -48,6 +48,7 @@ if __name__ == "__main__":
         results = client.generate(
             prompts="asdf",
             streaming_fn=callback,
+            max_new_tokens=50
         )
 
         print(''.join([out_token.generated_text for out_token in out_tokens]))
