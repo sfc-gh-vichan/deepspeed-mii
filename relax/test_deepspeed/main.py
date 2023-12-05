@@ -1,9 +1,7 @@
-import asyncio
 from dataclasses import dataclass
 import json
 import os
 from pathlib import Path
-from threading import Thread
 from relax.test_deepspeed.args import args
 
 from dacite import from_dict
@@ -37,10 +35,10 @@ if __name__ == "__main__":
         replica_num=deployment_config.replica_num,
     )
 
-    output = ""
+    out_tokens = []
     def callback(response):
         print(f"recv: {response[0]}")
-        output += response[0]
+        out_tokens.append(response[0])
 
     result_queue = []
     results = client.generate(
@@ -48,7 +46,7 @@ if __name__ == "__main__":
         streaming_fn=callback,
     )
 
-    print(output)
+    print(''.join(out_tokens))
 
     client.terminate_server()
     f.close()
