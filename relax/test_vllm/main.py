@@ -14,7 +14,6 @@ from transformers import AutoTokenizer
 parser = argparse.ArgumentParser()
 parser.add_argument("--host", type=str, default="0.0.0.0")
 parser.add_argument("--port", type=int, default=8000)
-parser.add_argument("--model", type=str)
 parser = AsyncEngineArgs.add_cli_args(parser)
 args = parser.parse_args()
 engine_args = AsyncEngineArgs.from_cli_args(args)
