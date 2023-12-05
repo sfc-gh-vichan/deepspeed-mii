@@ -37,13 +37,10 @@ print(len(input_ids))
 async def stream_results():
     full_output = ""
     async for request_output in results_generator:
-        output = ""
-        text_outputs = [output for output in request_output.outputs]
-        print(text_outputs)
+        outputs = [output for output in request_output.outputs]
         # for texts in text_outputs:
         #     output += texts[len(full_output):]
-        full_output += output
-        yield output[0]
+        yield outputs[0]
 
 
 async def main():
