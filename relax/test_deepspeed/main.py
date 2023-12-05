@@ -40,15 +40,11 @@ if __name__ == "__main__":
 
         responses = []
         def callback(response):
-            print(type(response[0]))
-            print(response[0])
             responses.append(response[0])
         
         sampling_params = {
             "max_new_tokens": 1024,
             "temperature": 1.0,  
-            "top_p": 1.0,
-            "top_k": 1,
             "do_sample": False
         }
 
