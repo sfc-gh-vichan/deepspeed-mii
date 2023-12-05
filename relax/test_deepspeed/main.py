@@ -37,10 +37,10 @@ if __name__ == "__main__":
         replica_num=deployment_config.replica_num,
     )
 
-    out_tokens = []
+    output = ""
     def callback(response):
         print(f"recv: {response[0]}")
-        out_tokens.append(response[0])
+        output += response[0]
 
     result_queue = []
     results = client.generate(
@@ -48,7 +48,7 @@ if __name__ == "__main__":
         streaming_fn=callback,
     )
 
-    print(out_tokens)
+    print(output)
 
     client.terminate_server()
     f.close()
