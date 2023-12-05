@@ -3,6 +3,7 @@ from dataclasses import dataclass
 import os
 from pathlib import Path
 from relax.test_deepspeed.args import args
+import argparse
 
 # from dacite import from_dict
 import mii
@@ -19,6 +20,9 @@ async def stream(response):
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--model", type=str)
+    args = parser.parse_args()
     # path = args.model_repository
     # p = Path(path)
     # model_name = ""
