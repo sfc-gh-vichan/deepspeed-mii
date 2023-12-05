@@ -47,7 +47,7 @@ if __name__ == "__main__":
             "max_new_tokens": 50,
             "temperature": 0,  
             "top_p": 1.0,
-            "top_k": -1,
+            "top_k": 1,
             "do_sample": False
         }
 
