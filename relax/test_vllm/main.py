@@ -47,7 +47,7 @@ async def stream_results():
         full_output += output
         yield output
     total_time = time.time() - start
-    print("ttft: " + "{:.2f}".format(ttft))
+    print("ttft: " + "{:.4f}".format(ttft))
     print("total_time: " + "{:.2f}".format(total_time))
 
 
