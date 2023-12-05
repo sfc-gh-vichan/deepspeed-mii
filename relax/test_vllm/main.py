@@ -40,6 +40,7 @@ async def stream_results():
         outputs = [output for output in request_output.outputs]
         # for texts in text_outputs:
         #     output += texts[len(full_output):]
+        print(outputs[0])
         yield outputs[0]
 
 
