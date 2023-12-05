@@ -56,18 +56,16 @@ async def main():
         # if first:
         #     ttft = time.time() - start
         #     first = False
-        full_output += result.text
+        full_output += result.text[len(full_output):]
     total_time = time.time() - start
     # print("ttft: " + "{:.3f}".format(ttft))
     print("total_time: " + "{:.2f}".format(total_time))
     print(full_output)
     print(len(input_ids))
     print(last_output_input_ids - len(input_ids))
-    return "test"
 
 
 test = asyncio.run(main())
-print(test)
 
 try:
     # Destroy
