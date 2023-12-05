@@ -31,7 +31,7 @@ async def stream_results():
             prompt + output.text for output in request_output.outputs
         ]
         ret = {"text": text_outputs}
+        print(ret)
         yield ret
 
-for result in stream_results():
-    print(result)
+stream_results()
