@@ -40,6 +40,7 @@ if __name__ == "__main__":
 
         responses = []
         def callback(response):
+            print(response)
             responses.append(response[0])
         
         sampling_params = {
@@ -50,7 +51,7 @@ if __name__ == "__main__":
 
         result_queue = []
         results = client.generate(
-            prompts="asdf",
+            prompts="Hello my name is",
             streaming_fn=callback,
             **sampling_params,
         )
