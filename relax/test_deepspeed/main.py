@@ -15,6 +15,7 @@ class DeploymentConfig:
 
 
 def stream(response):
+    print(response)
     return response
 
 
