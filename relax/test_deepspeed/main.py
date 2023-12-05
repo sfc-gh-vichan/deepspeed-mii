@@ -15,16 +15,7 @@ class DeploymentConfig:
     tensor_parallel: int
     replica_num: int
 
-
-async def callback(response, queue):
-    await queue.put(response)
-
-
-async def process(result_queue):
-    result = await result_queue.get()
-    print(result)
-
-async def main():
+if __name__ == "__main__":
     path = args.model_repository
     p = Path(path)
     model_name = ""
@@ -45,17 +36,19 @@ async def main():
         tensor_parallel=deployment_config.tensor_parallel,
         replica_num=deployment_config.replica_num,
     )
-    result_queue = asyncio.Queue()
+
+    out_tokens = []
+    def callback(response):
+        print(f"recv: {response.response[0]}")
+        out_tokens.append(response.response[0])
+
+    result_queue = []
     results = client.generate(
         prompts="asdf",
-        streaming_fn=lambda resp: asyncio.create_task(callback(resp, result_queue)),
+        streaming_fn=callback,
     )
-    t = Thread(target=process, args=[result_queue])
-    t.run()
-    await results
+
+    print(out_tokens)
+
     client.terminate_server()
     f.close()
-
-
-if __name__ == "__main__":
-    asyncio.run(main())
