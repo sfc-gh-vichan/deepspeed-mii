@@ -47,7 +47,7 @@ async def main():
     ttft = None
     total_time = None
     full_output = result
-    for result in stream_results():
+    async for result in stream_results():
         if first:
             ttft = time.time() - start
             first = False
