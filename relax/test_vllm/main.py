@@ -1,4 +1,5 @@
 import argparse
+from time import sleep
 
 from vllm.engine.arg_utils import AsyncEngineArgs
 from vllm.engine.async_llm_engine import AsyncLLMEngine
@@ -24,6 +25,8 @@ sampling_params = SamplingParams(temperature=0,  # get rid of nondeterminism.
 
 results_generator = engine.generate(["asdf"], sampling_params, "1")
 
+print("generating...")
+
 def stream_results():
     for request_output in results_generator:
         prompt = request_output.prompt
@@ -34,3 +37,7 @@ def stream_results():
         print(ret)
         yield ret
 
+stream_results()
+
+
+sleep(1000)
