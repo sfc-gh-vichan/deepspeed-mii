@@ -54,7 +54,7 @@ async def stream_results():
 async def main():
     await stream_results()
 
-asyncio.run(stream_results())
+asyncio.run(main())
 
 try:
     # Destroy
