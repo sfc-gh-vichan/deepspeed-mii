@@ -52,7 +52,7 @@ async def stream_results():
 
 
 async def main():
-    await stream_results()
+    stream_results()
 
 asyncio.run(main())
 
