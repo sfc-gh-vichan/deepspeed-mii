@@ -14,10 +14,6 @@ class DeploymentConfig:
     replica_num: int
 
 
-async def stream(response):
-    yield response
-
-
 if __name__ == "__main__":
     path = args.model_repository
     p = Path(path)
@@ -41,7 +37,6 @@ if __name__ == "__main__":
     )
     results = client.generate(
         prompts="asdf",
-        streaming_fn=stream,
     )
     print(results)
     client.terminate_server()
