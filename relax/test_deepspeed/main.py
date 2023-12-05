@@ -14,8 +14,8 @@ class DeploymentConfig:
     replica_num: int
 
 
-async def stream(response):
-    return None
+def stream(response):
+    return response
 
 
 if __name__ == "__main__":
