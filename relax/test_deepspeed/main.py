@@ -44,5 +44,5 @@ if __name__ == "__main__":
         streaming_fn=stream,
     )
     print(results)
-    client.terminate()
+    client.terminate_server()
     # f.close()
