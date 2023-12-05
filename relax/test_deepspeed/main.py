@@ -40,7 +40,7 @@ if __name__ == "__main__":
 
         out_tokens = []
         def callback(response):
-            print(response)
+            print({response})
             out_tokens.append(response[0])
         
         sampling_params = {
