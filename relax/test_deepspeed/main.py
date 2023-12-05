@@ -42,12 +42,17 @@ if __name__ == "__main__":
         def callback(response):
             print(response[0])
             out_tokens.append(response[0])
+        
+        sampling_params = {
+            "max_new_tokens": 50,
+            "do_sample": False
+        }
 
         result_queue = []
         results = client.generate(
             prompts="asdf",
             streaming_fn=callback,
-            max_new_tokens=50,
+            **sampling_params,
         )
 
         print(' '.join([out_token.generated_text for out_token in out_tokens]))
