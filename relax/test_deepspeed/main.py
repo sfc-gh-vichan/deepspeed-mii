@@ -3,6 +3,7 @@ from dataclasses import dataclass
 import json
 import os
 from pathlib import Path
+from threading import Thread
 from relax.test_deepspeed.args import args
 
 from dacite import from_dict
@@ -18,6 +19,10 @@ class DeploymentConfig:
 async def callback(response, queue):
     await queue.put(response)
 
+
+async def process(result_queue):
+    result = await result_queue.get()
+    print(result)
 
 async def main():
     path = args.model_repository
@@ -45,7 +50,9 @@ async def main():
         prompts="asdf",
         streaming_fn=lambda resp: asyncio.create_task(callback(resp, result_queue)),
     )
-    print(results)
+    t = Thread(target=process, args=[result_queue])
+    t.run()
+    await results
     client.terminate_server()
     f.close()
 
