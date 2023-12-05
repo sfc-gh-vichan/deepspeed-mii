@@ -40,8 +40,7 @@ if __name__ == "__main__":
 
         out_tokens = []
         def callback(response):
-            print(type(response[0]))
-            print(f"recv: {response[0]}")
+            print(response[0])
             out_tokens.append(response[0])
 
         result_queue = []
