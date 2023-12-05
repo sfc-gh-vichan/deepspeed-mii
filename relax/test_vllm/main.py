@@ -50,12 +50,7 @@ async def stream_results():
     print("ttft: " + "{:.3f}".format(ttft))
     print("total_time: " + "{:.2f}".format(total_time))
 
-
-async def main():
-    async for result in stream_results():
-        print(result)
-
-asyncio.run(main())
+asyncio.run(stream_results())
 
 try:
     # Destroy
