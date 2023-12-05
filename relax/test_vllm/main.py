@@ -36,7 +36,7 @@ async def stream_results():
             prompt + output.text for output in request_output.outputs
         ]
         ret = {"text": text_outputs}
-        return ret
+        yield ret
 
 results = stream_results()
 
