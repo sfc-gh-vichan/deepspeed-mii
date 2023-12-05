@@ -59,7 +59,7 @@ if __name__ == "__main__":
             **sampling_params,
         )
 
-        print(out_tokens)
+        print([out_token.to_msg_dict() for out_token in out_tokens])
 
         print(' '.join([out_token.generated_text for out_token in out_tokens]))
     except Exception as e:
