@@ -29,8 +29,8 @@ sampling_params = SamplingParams(
 )
 
 tokenizer = AutoTokenizer.from_pretrained(args.model)
-results_generator = engine.generate("asdf", sampling_params, "")
-input_ids = tokenizer.encode("asdf")
+results_generator = engine.generate("Hello my name is", sampling_params, "")
+input_ids = tokenizer.encode("Hello my name is")
 print(len(input_ids))
 
 
