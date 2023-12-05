@@ -30,7 +30,6 @@ async def stream_results():
     print("streaming results...")
     async for request_output in results_generator:
         prompt = request_output.prompt
-        print(prompt)
         text_outputs = [
             prompt + output.text for output in request_output.outputs
         ]
