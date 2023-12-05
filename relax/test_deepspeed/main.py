@@ -1,3 +1,4 @@
+import asyncio
 from dataclasses import dataclass
 import json
 import os
@@ -14,12 +15,11 @@ class DeploymentConfig:
     replica_num: int
 
 
-def stream(response):
-    print(response)
-    return response
+async def callback(response, queue):
+    await queue.put(response)
 
 
-if __name__ == "__main__":
+async def main():
     path = args.model_repository
     p = Path(path)
     model_name = ""
@@ -40,10 +40,16 @@ if __name__ == "__main__":
         tensor_parallel=deployment_config.tensor_parallel,
         replica_num=deployment_config.replica_num,
     )
+    result_queue = asyncio.Queue()
     results = client.generate(
         prompts="asdf",
-        streaming_fn=stream,
+        streaming_fn=lambda resp: asyncio.create_task(callback(resp, result_queue)),
     )
     print(results)
     client.terminate_server()
     f.close()
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
+
