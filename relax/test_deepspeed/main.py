@@ -50,9 +50,9 @@ if __name__ == "__main__":
             streaming_fn=callback,
         )
 
-        print(''.join(out_tokens))
-    except:
-        pass
+        print(''.join([out_token.generated_text for out_token in out_tokens]))
+    except Exception as e:
+        print(repr(e))
     finally:
         if client is not None:
             client.terminate_server()
