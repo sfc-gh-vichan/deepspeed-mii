@@ -39,8 +39,8 @@ if __name__ == "__main__":
 
     out_tokens = []
     def callback(response):
-        print(f"recv: {response.response[0]}")
-        out_tokens.append(response.response[0])
+        print(f"recv: {response[0]}")
+        out_tokens.append(response[0])
 
     result_queue = []
     results = client.generate(
