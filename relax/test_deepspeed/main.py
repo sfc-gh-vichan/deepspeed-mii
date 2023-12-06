@@ -3,6 +3,7 @@ import json
 import os
 from pathlib import Path
 from relax.test_deepspeed.args import args
+import time
 
 from dacite import from_dict
 import mii
@@ -12,6 +13,12 @@ class DeploymentConfig:
     model_name: str
     tensor_parallel: int
     replica_num: int
+
+class CallbackObject:
+    def __init__(self):
+        self.responses = []
+        self.first = True
+        self.ttft = 0.0
 
 if __name__ == "__main__":
     client = None
@@ -38,10 +45,13 @@ if __name__ == "__main__":
             replica_num=deployment_config.replica_num,
         )
 
-        responses = []
+        callback_object = CallbackObject()
         def callback(response):
             print(response)
-            responses.append(response[0])
+            if callback_object.first:
+                callback_object.ttft = time.time()
+                callback_object.first = False
+            callback_object.responses.append(response[0])
         
         sampling_params = {
             "max_new_tokens": 50,
@@ -59,6 +69,7 @@ if __name__ == "__main__":
         print([out_token.to_msg_dict() for out_token in responses])
 
         print(' '.join([out_token.generated_text for out_token in responses]))
+        print(callback_object.__dict__)
     except Exception as e:
         print(repr(e))
     finally:
