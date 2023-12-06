@@ -14,11 +14,12 @@ class DeploymentConfig:
     tensor_parallel: int
     replica_num: int
 
+
 class CallbackObject:
     def __init__(self):
         self.responses = []
         self.first = True
-        self.ttft = 0.0
+        self.first_token_time = 0.0
 
 if __name__ == "__main__":
     client = None
@@ -47,7 +48,6 @@ if __name__ == "__main__":
 
         callback_object = CallbackObject()
         def callback(response):
-            print(response)
             if callback_object.first:
                 callback_object.ttft = time.time()
                 callback_object.first = False
@@ -59,7 +59,6 @@ if __name__ == "__main__":
             "top_p": 1.0,
         }
 
-        result_queue = []
         start_time = time.time()
         results = client.generate(
             prompts="Hello my name is",
