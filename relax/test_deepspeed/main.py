@@ -66,9 +66,9 @@ if __name__ == "__main__":
             **sampling_params,
         )
 
-        print([out_token.to_msg_dict() for out_token in responses])
+        print([out_token.to_msg_dict() for out_token in callback_object.responses])
 
-        print(' '.join([out_token.generated_text for out_token in responses]))
+        print(' '.join([out_token.generated_text for out_token in callback_object.responses]))
         print(callback_object.__dict__)
     except Exception as e:
         print(repr(e))
