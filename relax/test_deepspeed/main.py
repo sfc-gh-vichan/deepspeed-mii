@@ -60,11 +60,13 @@ if __name__ == "__main__":
         }
 
         result_queue = []
+        start_time = time.time()
         results = client.generate(
             prompts="Hello my name is",
             streaming_fn=callback,
             **sampling_params,
         )
+        callback_object.ttft = callback_object.ttft - start_time
 
         print([out_token.to_msg_dict() for out_token in callback_object.responses])
 
