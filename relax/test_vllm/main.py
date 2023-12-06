@@ -22,12 +22,10 @@ engine = AsyncLLMEngine.from_engine_args(engine_args)
 
 # get rid of nondeterminism.
 sampling_params = SamplingParams(
-    use_beam_search=False,
-    temperature=1.0,  
-    top_p=0.9,
+    temperature=0,  # get rid of nondeterminism.
+    top_p=1.0,
     top_k=-1,
     max_tokens=50,
-    ignore_eos=False,
 )
 
 tokenizer = AutoTokenizer.from_pretrained(args.model)
