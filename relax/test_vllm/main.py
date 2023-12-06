@@ -62,7 +62,7 @@ async def main():
     print("total_time: " + "{:.2f}".format(total_time))
     print(full_output)
     print(len(input_ids))
-    print(last_output_input_ids - len(input_ids))
+    print(last_output_input_ids)
 
 
 test = asyncio.run(main())
