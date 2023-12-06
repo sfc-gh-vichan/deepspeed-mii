@@ -45,6 +45,8 @@ if __name__ == "__main__":
         
         sampling_params = {
             "max_new_tokens": 50,
+            "do_sample": False,
+            "top_p": 1.0,
         }
 
         result_queue = []
