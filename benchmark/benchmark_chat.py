@@ -141,12 +141,11 @@ def benchmark_mii(model: str, tensor_parallel: int, warmup: int, prompt_lengths:
         callback_obj = CallbackObject()
         def callback(response):
             if callback_obj.first:
-                callback_obj.ttft = time.time()
+                callback_obj.first_token_time = time.time()
                 callback_obj.first = False
             callback_obj.responses.append(response[0])
 
         start = time.time()
-        print(start)
         llm.generate(
             prompts=prompts,
             streaming_fn=callback,
@@ -155,7 +154,6 @@ def benchmark_mii(model: str, tensor_parallel: int, warmup: int, prompt_lengths:
             max_new_tokens=max_new_tokens
         )
         end = time.time()
-        print(end)
         time_to_first_token = callback_obj.first_token_time - start
         latency = end - start
 
@@ -172,7 +170,7 @@ def benchmark_mii(model: str, tensor_parallel: int, warmup: int, prompt_lengths:
                 output_length=output_lengths,
                 time_to_first_token=time_to_first_token,
                 latency=latency,
-                tensor_parallel=tensor_parallel
+                tensor_parallel=tensor_parallel,
             )
         )
 
@@ -320,6 +318,6 @@ if __name__ == "__main__":
 
     print('!!!---Printing results---!!!')
     # Output results as a csv
-    print('framework, avg_input, max_input, min_input, avg_output, max_output, min_output, latency(s), throughput, tensor_parallel')
+    print('framework, avg_input, min_input, max_input, avg_output, min_output, max_output, time_to_first_token, latency(s), throughput, tensor_parallel')
     for i in benchmarks:
         print(i)
