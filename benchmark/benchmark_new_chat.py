@@ -48,10 +48,6 @@ def parse_args():
                         help="average number of tokens each prompt.",
                         type=list_of_ints,
                         default='1024')
-    parser.add_argument('--framework',
-                        required=True,
-                        type=list_of_strings,
-                        default='vllm,mii')
     parser.add_argument("-tp",
                         "--tensor_parallel",
                         type=int,
@@ -66,10 +62,6 @@ def parse_args():
                         "--use_thread",
                         action="store_true",
                         help="use thread for clients, else multiprocessing",
-                        default=False)
-    parser.add_argument("--vllm",
-                        action="store_true",
-                        help="Use vllm benchmark",
                         default=False)
     parser.add_argument('--model', type=str, required=True, help="path to the model")
 
