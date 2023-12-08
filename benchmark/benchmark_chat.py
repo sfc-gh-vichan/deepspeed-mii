@@ -214,19 +214,19 @@ async def benchmark_vllm(model: str, tensor_parallel: int, warmup: int, prompt_l
 
     tokenizer = AutoTokenizer.from_pretrained(model)
     prompt_generator = PromptsGenerator(tokenizer_path=model)
-    # if warmup > 0:
-    #     print('warming up...')
-    #     for prompt_length in prompt_lengths:
-    #         warmup_prompts = prompt_generator.generate(
-    #             average_token=prompt_length,
-    #             variance=prompt_length*0.3,
-    #             max_token=max_new_tokens,
-    #             n=warmup
-    #         )
-    #         for warmup_prompt in warmup_prompts:
-    #             async for result in llm.generate(warmup_prompt, sampling_params, ""):
-    #                 pass
-    #     print('warm up finished')
+    if warmup > 0:
+        print('warming up...')
+        for prompt_length in prompt_lengths:
+            warmup_prompts = prompt_generator.generate(
+                average_token=prompt_length,
+                variance=prompt_length*0.3,
+                max_token=max_new_tokens,
+                n=warmup
+            )
+            for warmup_prompt in warmup_prompts:
+                async for result in llm.generate(warmup_prompt, sampling_params, ""):
+                    pass
+        print('warm up finished')
     
     async def stream_results(generator):
         async for request_output in generator:
