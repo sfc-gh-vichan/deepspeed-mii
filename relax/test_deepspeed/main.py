@@ -77,15 +77,7 @@ if __name__ == "__main__":
         clients = [mii.client("llama") for _ in range(0, len(prompts))]
         threads: list[Thread] = []
         for i, prompt in enumerate(prompts):
-            print(f"============================SENDING NEXT PROMPT: {i}========================")
-            kwargs = {
-                "prompts": prompt,
-                "streaming_fn": callback,
-                "max_new_tokens": 50,
-                "do_sample": False,
-                "top_p": 1.0,
-            }
-            threads.append(Thread(target=clients[i].generate, args=kwargs))
+            threads.append(Thread(target=clients[i].generate, args=[prompt, callback], kwargs=sampling_params))
 
         start_time = time.time()
         for thread in threads:
