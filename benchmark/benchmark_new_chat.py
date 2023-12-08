@@ -243,12 +243,12 @@ def _run_parallel(
 
     barrier.wait()
 
-    for _ in range(num_warmup_queries):
+    for i in range(num_warmup_queries):
         print(f"warmup queue size: {query_queue.qsize()} ({pid})", flush=True)
         input_prompt = query_queue.get(timeout=1.0)
 
         if vllm:
-            asyncio.run(benchmark_vllm(client, [input_prompt], max_new_tokens, str(num_warmup_queries)))
+            asyncio.run(benchmark_vllm(client, [input_prompt], max_new_tokens, str(i)))
         else:
             benchmark_mii(client, [input_prompt], max_new_tokens)
 
