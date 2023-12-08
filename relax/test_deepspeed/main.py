@@ -89,7 +89,7 @@ if __name__ == "__main__":
 
         # print(' '.join([out_token.generated_text for out_token in callback_object.responses]))
         # print(callback_object.__dict__)
-        print("latency": latency)
+        print("latency: ", latency)
     except Exception as e:
         print(repr(e))
     finally:
