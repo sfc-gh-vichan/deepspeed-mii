@@ -315,6 +315,6 @@ if __name__ == "__main__":
 
     print('!!!---Printing results---!!!')
     # Output results as a csv
-    print('framework, num_prompts, avg_input, max_input, min_input, avg_output, max_output, min_output, latency(s), throughput, tensor_parallel')
+    print('framework, avg_input, max_input, min_input, avg_output, max_output, min_output, latency(s), throughput, tensor_parallel')
     for i in benchmarks:
         print(i)
