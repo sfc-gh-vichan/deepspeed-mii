@@ -157,6 +157,7 @@ def benchmark_mii(model: str, tensor_parallel: int, warmup: int, prompt_lengths:
         end = time.time()
         time_to_first_token = callback_obj.first_token_time - start
         latency = end - start
+        print("done")
 
         input_lengths = []
         output_lengths = []
@@ -259,6 +260,7 @@ async def benchmark_vllm(model: str, tensor_parallel: int, warmup: int, prompt_l
         end = time.time()
         time_to_first_token = callback_obj.first_token_time - start
         latency = end - start
+        print("done")
 
         input_lengths = []
         output_lengths = []
