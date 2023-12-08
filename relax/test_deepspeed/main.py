@@ -74,7 +74,7 @@ if __name__ == "__main__":
                 show_progress=True,
             ))
 
-        clients = [mii.client("llama") for _ in len(prompts)]
+        clients = [mii.client("llama") for _ in range(0, len(prompts))]
         threads: list[Thread] = []
         for i, prompt in enumerate(prompts):
             print(f"============================SENDING NEXT PROMPT: {i}========================")
