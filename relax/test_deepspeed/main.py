@@ -2,6 +2,7 @@ import time
 import argparse
 import mii
 from prompt_generator import PromptsGenerator
+from threading import Thread
 
 MAX_SEQUENCE_LENGTH = 4096
 
@@ -73,14 +74,23 @@ if __name__ == "__main__":
                 show_progress=True,
             ))
 
-        start_time = time.time()
+        clients = [mii.client("llama") for _ in len(prompts)]
+        threads: list[Thread] = []
         for i, prompt in enumerate(prompts):
             print(f"============================SENDING NEXT PROMPT: {i}========================")
-            client.generate(
-                prompts=prompt,
-                streaming_fn=callback,
-                **sampling_params,
-            )
+            kwargs = {
+                "prompts": prompt,
+                "streaming_fn": callback,
+                "max_new_tokens": 50,
+                "do_sample": False,
+                "top_p": 1.0,
+            }
+            threads.append(Thread(target=clients[i].generate, args=kwargs))
+
+        start_time = time.time()
+        for thread in threads:
+            thread.run()
+            thread.join()
         end_time = time.time()
         callback_object.ttft = callback_object.ttft - start_time
         latency = end_time - start_time
