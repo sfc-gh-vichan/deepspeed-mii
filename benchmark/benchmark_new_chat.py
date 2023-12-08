@@ -284,6 +284,7 @@ def run_benchmarks(
     warmup: int,
     vllm: bool
 ) -> List[Benchmark]:
+    client = None
     try:
         if vllm:
             parser = argparse.ArgumentParser()
