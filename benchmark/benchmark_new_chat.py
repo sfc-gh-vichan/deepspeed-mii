@@ -247,9 +247,9 @@ def _run_parallel(
         input_prompt = query_queue.get(timeout=1.0)
 
         if vllm:
-            benchmarks = benchmark_vllm(client, [input_prompt], max_new_tokens)
+            asyncio.run(benchmark_vllm(client, [input_prompt], max_new_tokens))
         else:
-            benchmarks = benchmark_mii(client, [input_prompt], max_new_tokens)
+            benchmark_mii(client, [input_prompt], max_new_tokens)
 
     barrier.wait()
 
