@@ -2,7 +2,7 @@ import time
 import argparse
 import mii
 from prompt_generator import PromptsGenerator
-from threading import Thread
+from multiprocessing import Process
 
 MAX_SEQUENCE_LENGTH = 4096
 
@@ -74,19 +74,19 @@ if __name__ == "__main__":
                 show_progress=True,
             ))
 
-        threads: list[Thread] = []
+        processes: list[Process] = []
         
         def _generate(prompt, callback, sampling_params):
             mii.client("llama").generate(prompt, callback, **sampling_params)
 
         for i, prompt in enumerate(prompts):
-            threads.append(Thread(target=_generate, args=[prompt, callback, sampling_params]))
+            processes.append(Process(target=_generate, args=[prompt, callback, sampling_params]))
 
         start_time = time.time()
-        for thread in threads:
-            thread.start()
-        for thread in threads:
-            thread.join()
+        for process in processes:
+            process.start()
+        for process in processes:
+            process.join()
         end_time = time.time()
         callback_object.ttft = callback_object.ttft - start_time
         latency = end_time - start_time
