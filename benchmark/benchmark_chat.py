@@ -144,6 +144,7 @@ def benchmark_mii(model: str, tensor_parallel: int, warmup: int, prompt_lengths:
                 callback_obj.first_token_time = time.time()
                 callback_obj.first = False
             callback_obj.responses.append(response[0])
+            print(response[0])
 
         start = time.time()
         llm.generate(
@@ -253,6 +254,7 @@ async def benchmark_vllm(model: str, tensor_parallel: int, warmup: int, prompt_l
                 callback_obj.first_token_time = time.time()
                 callback_obj.first = False
             callback_obj.responses.append(result)
+            print(result)
 
         end = time.time()
         time_to_first_token = callback_obj.first_token_time - start
