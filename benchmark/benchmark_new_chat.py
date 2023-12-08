@@ -164,7 +164,7 @@ def benchmark_mii(
     return benchmarks
 
 
-def benchmark_vllm(
+async def benchmark_vllm(
     client: AsyncLLMEngine,
     prompts: str,
     max_new_tokens: int
