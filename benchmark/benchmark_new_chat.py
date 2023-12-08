@@ -294,7 +294,6 @@ def run_benchmarks(
             client = AsyncLLMEngine.from_engine_args(engine_args)
             print('took ' + "{:.2f}".format(time.time()-start) + " seconds to start vllm engine")
         else:
-            client = None
             start = time.time()
             mii.serve(
                 model_name_or_path=model,
@@ -392,7 +391,7 @@ def run_benchmarks(
         else:
             try:
                 # Destroy
-                client.terminate_server()
+                mii.client(model).terminate_server()
             except Exception as e:
                 print(f'failed to destroy mii: {e}')
 
