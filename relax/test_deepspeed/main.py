@@ -81,11 +81,13 @@ if __name__ == "__main__":
             client.generate(prompt, callback, **sampling_params)
 
         for i, prompt in enumerate(prompts):
-            threads.append(Thread(target=_generate, args=[prompt, callback, sampling_params]))
+            threads.append(Thread(target=_generate, args=[client[i], prompt, callback, sampling_params]))
 
         start_time = time.time()
         for thread in threads:
+            thread.start()
             thread.run()
+        for thread in threads:
             thread.join()
         end_time = time.time()
         callback_object.ttft = callback_object.ttft - start_time
