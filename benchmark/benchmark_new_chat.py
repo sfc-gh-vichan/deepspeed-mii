@@ -366,7 +366,7 @@ def run_benchmarks(
         barrier.wait()
 
         response_details = []
-        while len(response_details) < prompt_lengths:
+        while len(response_details) < len(prompt_lengths):
             res = result_queue.get()
             # vLLM returns concatinated tokens
             # if vllm:
@@ -383,7 +383,7 @@ def run_benchmarks(
             try:
                 # Destroy
                 destroy_model_parallel()
-                del llm
+                del client
                 gc.collect()
                 torch.cuda.empty_cache()
                 torch.distributed.destroy_process_group()
@@ -392,7 +392,7 @@ def run_benchmarks(
         else:
             try:
                 # Destroy
-                llm.terminate_server()
+                client.terminate_server()
             except Exception as e:
                 print(f'failed to destroy mii: {e}')
 
