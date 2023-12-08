@@ -77,10 +77,12 @@ if __name__ == "__main__":
         processes: list[Process] = []
         
         def _generate(prompt, callback, sampling_params):
+            print("processing")
             mii.client("llama").generate(prompt, callback, **sampling_params)
 
         for i, prompt in enumerate(prompts):
             processes.append(Process(target=_generate, args=[prompt, callback, sampling_params]))
+        print("processes")
 
         start_time = time.time()
         for process in processes:
