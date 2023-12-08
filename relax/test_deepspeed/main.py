@@ -76,8 +76,12 @@ if __name__ == "__main__":
 
         clients = [mii.client("llama") for _ in range(0, len(prompts))]
         threads: list[Thread] = []
+        
+        def _generate(client, prompt, callback, sampling_params):
+            client.generate(prompt, callback, **sampling_params)
+
         for i, prompt in enumerate(prompts):
-            threads.append(Thread(target=clients[i].generate, args=[prompt, callback], kwargs=sampling_params))
+            threads.append(Thread(target=_generate, args=[prompt, callback, sampling_params]))
 
         start_time = time.time()
         for thread in threads:
