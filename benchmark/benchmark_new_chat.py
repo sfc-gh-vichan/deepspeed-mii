@@ -220,7 +220,7 @@ async def benchmark_vllm(
     return benchmarks
 
 
-def _run_parallel(
+async def _run_parallel(
     client,
     model,
     num_warmup_queries,
@@ -247,7 +247,7 @@ def _run_parallel(
         input_prompt = query_queue.get(timeout=1.0)
 
         if vllm:
-            benchmarks = benchmark_vllm(client, [input_prompt], max_new_tokens)
+            benchmarks = await benchmark_vllm(client, [input_prompt], max_new_tokens)
         else:
             benchmarks = benchmark_mii(client, [input_prompt], max_new_tokens)
 
@@ -261,7 +261,7 @@ def _run_parallel(
 
             # Set max_new_tokens following normal distribution
             if vllm:
-                benchmarks = benchmark_vllm(client, [input_prompt], max_new_tokens)
+                benchmarks = await benchmark_vllm(client, [input_prompt], max_new_tokens)
             else:
                 benchmarks = benchmark_mii(client, [input_prompt], max_new_tokens)
 
