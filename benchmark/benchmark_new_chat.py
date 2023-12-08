@@ -188,7 +188,7 @@ async def benchmark_vllm(
     callback_obj = CallbackObject()
 
     start = time.time()
-    outputs = client.generate(prompts, sampling_params, request_id)
+    outputs = client.generate(prompts[0], sampling_params, request_id)
 
     async for result in stream_results(outputs):
         if callback_obj.first:
