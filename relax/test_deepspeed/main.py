@@ -51,10 +51,10 @@ if __name__ == "__main__":
 
         callback_object = CallbackObject()
         def callback(response):
-            if callback_object.first:
-                callback_object.ttft = time.time()
-                callback_object.first = False
-            callback_object.responses.append(response[0])
+            # if callback_object.first:
+            #     callback_object.ttft = time.time()
+            #     callback_object.first = False
+            # callback_object.responses.append(response[0])
             print(response[0])
         
         sampling_params = {
