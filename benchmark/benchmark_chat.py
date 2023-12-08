@@ -5,8 +5,6 @@ import time
 from functools import total_ordering
 from typing import List
 from transformers import AutoTokenizer
-import nest_asyncio
-nest_asyncio.apply()
 
 import torch
 
@@ -144,7 +142,6 @@ def benchmark_mii(model: str, tensor_parallel: int, warmup: int, prompt_lengths:
                 callback_obj.first_token_time = time.time()
                 callback_obj.first = False
             callback_obj.responses.append(response[0])
-            print(response[0])
 
         start = time.time()
         llm.generate(
@@ -157,7 +154,6 @@ def benchmark_mii(model: str, tensor_parallel: int, warmup: int, prompt_lengths:
         end = time.time()
         time_to_first_token = callback_obj.first_token_time - start
         latency = end - start
-        print("done")
 
         input_lengths = []
         output_lengths = []
@@ -255,12 +251,10 @@ async def benchmark_vllm(model: str, tensor_parallel: int, warmup: int, prompt_l
                 callback_obj.first_token_time = time.time()
                 callback_obj.first = False
             callback_obj.responses.append(result)
-            print(result)
 
         end = time.time()
         time_to_first_token = callback_obj.first_token_time - start
         latency = end - start
-        print("done")
 
         input_lengths = []
         output_lengths = []
