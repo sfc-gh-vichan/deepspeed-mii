@@ -221,10 +221,10 @@ async def benchmark_vllm(model: str, tensor_parallel: int, warmup: int, prompt_l
                 average_token=prompt_length,
                 variance=prompt_length*0.3,
                 max_token=max_new_tokens,
-                n=warmup
+                n=warmup,
             )
-            for warmup_prompt in warmup_prompts:
-                async for result in llm.generate(warmup_prompt, sampling_params, ""):
+            for i, warmup_prompt in enumerate(warmup_prompts):
+                async for result in llm.generate(warmup_prompt, sampling_params, str(i)):
                     pass
         print('warm up finished')
     
@@ -234,21 +234,21 @@ async def benchmark_vllm(model: str, tensor_parallel: int, warmup: int, prompt_l
             yield outputs[0]
 
     benchmarks = []
-    for prompt_length in prompt_lengths:
+    for i, prompt_length in enumerate(prompt_lengths):
         prompt_generator.reset()
         prompts = prompt_generator.generate(
             average_token=prompt_length,
             variance=prompt_length*0.3,
             max_token=MAX_SEQUENCE_LENGTH-max_new_tokens,
             n=1,
-            show_progress=True
+            show_progress=True,
         )
 
         callback_obj = CallbackObject()
         input_len = len(tokenizer.encode(prompts[0]))
 
         start = time.time()
-        outputs = llm.generate(prompts[0], sampling_params, "")
+        outputs = llm.generate(prompts[0], sampling_params, str(i))
 
         async for result in stream_results(outputs):
             if callback_obj.first:
