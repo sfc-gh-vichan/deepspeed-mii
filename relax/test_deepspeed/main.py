@@ -86,7 +86,6 @@ if __name__ == "__main__":
         start_time = time.time()
         for thread in threads:
             thread.start()
-            thread.run()
         for thread in threads:
             thread.join()
         end_time = time.time()
