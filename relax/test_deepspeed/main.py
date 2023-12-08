@@ -42,7 +42,6 @@ if __name__ == "__main__":
     f = None
     try:
         args = parse_args()
-        print(args.model)
         client = mii.serve(
             model_name_or_path=args.model,
             deployment_name="llama",
@@ -55,6 +54,7 @@ if __name__ == "__main__":
                 callback_object.ttft = time.time()
                 callback_object.first = False
             callback_object.responses.append(response[0])
+            print(response[0])
         
         sampling_params = {
             "max_new_tokens": 50,
@@ -75,7 +75,7 @@ if __name__ == "__main__":
 
         start_time = time.time()
         for i, prompt in enumerate(prompts):
-            print(f"SENDING NEXT PROMPT: {i}")
+            print(f"============================SENDING NEXT PROMPT: {i}========================")
             client.generate(
                 prompts=prompt,
                 streaming_fn=callback,
@@ -85,10 +85,11 @@ if __name__ == "__main__":
         callback_object.ttft = callback_object.ttft - start_time
         latency = end_time - start_time
 
-        print([out_token.to_msg_dict() for out_token in callback_object.responses])
+        # print([out_token.to_msg_dict() for out_token in callback_object.responses])
 
-        print(' '.join([out_token.generated_text for out_token in callback_object.responses]))
-        print(callback_object.__dict__)
+        # print(' '.join([out_token.generated_text for out_token in callback_object.responses]))
+        # print(callback_object.__dict__)
+        print("latency": latency)
     except Exception as e:
         print(repr(e))
     finally:
