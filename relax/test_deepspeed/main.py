@@ -36,11 +36,13 @@ class CallbackObject:
         self.first = True
         self.first_token_time = 0.0
 
+
 if __name__ == "__main__":
     client = None
     f = None
     try:
         args = parse_args()
+        print(args.model)
         client = mii.serve(
             model_name_or_path=args.model,
             deployment_name="llama",
