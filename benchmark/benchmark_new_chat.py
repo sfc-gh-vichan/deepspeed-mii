@@ -324,7 +324,7 @@ def run_benchmarks(
             processes.append(
                 runnable_cls(
                     target=_run_parallel,
-                    args=(client, model, num_warmup_queries, barrier, query_queue, result_queue, max_new_tokens, client_num)
+                    args=(client, model, num_warmup_queries, barrier, query_queue, result_queue, max_new_tokens, client_num, vllm)
                 )
             )
         for p in processes:
