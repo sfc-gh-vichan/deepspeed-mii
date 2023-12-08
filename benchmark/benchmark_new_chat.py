@@ -258,6 +258,8 @@ async def _run_parallel(
         while True:
             print(f"queue size: {query_queue.qsize()} ({pid})", flush=True)
             input_prompt = query_queue.get(timeout=1.0) # Get input tokens here as well?
+            if len(input_prompt) == 0:
+                break
 
             # Set max_new_tokens following normal distribution
             if vllm:
@@ -356,6 +358,8 @@ def run_benchmarks(
                 )
             )
             [query_queue.put(prompt) for prompt in prompts]
+        
+        query_queue.put("")
 
         # Tokenizers must be initialized after fork.
         # So we need to fork before putting inputs to the queue.
