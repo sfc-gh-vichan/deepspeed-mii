@@ -167,7 +167,8 @@ def benchmark_mii(
 async def benchmark_vllm(
     client: AsyncLLMEngine,
     prompts: str,
-    max_new_tokens: int
+    max_new_tokens: int,
+    request_id: str,
 ) -> List[Benchmark]:
     # Create a sampling params object.
     sampling_params = SamplingParams(
@@ -187,7 +188,7 @@ async def benchmark_vllm(
     callback_obj = CallbackObject()
 
     start = time.time()
-    outputs = client.generate(prompts, sampling_params, str(i))
+    outputs = client.generate(prompts, sampling_params, request_id)
 
     async for result in stream_results(outputs):
         if callback_obj.first:
@@ -247,7 +248,7 @@ def _run_parallel(
         input_prompt = query_queue.get(timeout=1.0)
 
         if vllm:
-            asyncio.run(benchmark_vllm(client, [input_prompt], max_new_tokens))
+            asyncio.run(benchmark_vllm(client, [input_prompt], max_new_tokens, str(num_warmup_queries)))
         else:
             benchmark_mii(client, [input_prompt], max_new_tokens)
 
@@ -263,7 +264,7 @@ def _run_parallel(
 
             # Set max_new_tokens following normal distribution
             if vllm:
-                benchmarks = asyncio.run(benchmark_vllm(client, [input_prompt], max_new_tokens))
+                benchmarks = asyncio.run(benchmark_vllm(client, [input_prompt], max_new_tokens, str(num_warmup_queries)))
             else:
                 benchmarks = benchmark_mii(client, [input_prompt], max_new_tokens)
 
