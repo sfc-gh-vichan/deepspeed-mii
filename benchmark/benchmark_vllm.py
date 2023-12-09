@@ -6,6 +6,7 @@ import time
 from typing import List
 from transformers import AutoTokenizer
 from benchmark_tools import Benchmark, Query, summarize_chat_benchmarks
+import threading
 
 from vllm.engine.arg_utils import AsyncEngineArgs
 from vllm.engine.async_llm_engine import AsyncLLMEngine
@@ -171,7 +172,7 @@ async def run_vllm_benchmarks(
             query = Query(prompts[i])
             print(f"generating query {i}")
             outputs = client.generate(prompt=query.prompt, sampling_params=sampling_params, request_id=str(i))
-            tasks.append(stream_results(outputs, benchmark_queue, query))
+            stream_results(outputs, benchmark_queue, query)
             i += 1
             time.sleep(1/queries_per_second)
         await asyncio.gather(*tasks)
