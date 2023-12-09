@@ -59,7 +59,6 @@ def parse_args():
     args, _ = parser.parse_known_args()
     return args
 
-
 @total_ordering
 class Benchmark:
     def __init__(self, framework, input_length, output_length, time_to_first_token, latency, tensor_parallel):
@@ -103,16 +102,22 @@ class Benchmark:
 
 class CallbackObject:
     def __init__(self):
-        self.start_time = time.time()
         self.responses = []
         self.first = True
         self.first_token_time = 0.0
 
 
+class Query:
+    def __init__(self, prompt):
+        self.prompt = prompt
+        self.start_time = time.time()
+
+
 def benchmark_mii(
     client,
     prompts: List[str],
-    max_new_tokens: int
+    max_new_tokens: int,
+    start_time: float,
 ) -> List[Benchmark]:
     benchmarks = []
     callback_obj = CallbackObject()
@@ -131,8 +136,8 @@ def benchmark_mii(
         max_new_tokens=max_new_tokens
     )
     end_time = time.time()
-    time_to_first_token = callback_obj.first_token_time - callback_obj.start_time
-    latency = end_time - callback_obj.start_time
+    time_to_first_token = callback_obj.first_token_time - start_time
+    latency = end_time - start_time
 
     input_lengths = []
     output_lengths = []
@@ -175,8 +180,8 @@ def _run_mii_parallel(
     try:
         while True:
             print(f"warmup queue size: {query_queue.qsize()} ({pid})", flush=True)
-            input_prompt = query_queue.get(timeout=1.0)
-            benchmark_mii(client=client, prompts=[input_prompt], max_new_tokens=max_new_tokens)
+            query = query_queue.get(timeout=1.0).prompt
+            benchmark_mii(client=client, prompts=[query.prompt], max_new_tokens=max_new_tokens, start_time=query.start_time)
     except queue.Empty:
         pass
 
@@ -185,11 +190,11 @@ def _run_mii_parallel(
     time.sleep(random.uniform(0, client_num) * 0.01)
     while True:
         try:
-            input_prompt = query_queue.get(timeout=1.0) # Get input tokens here as well?
+            query = query_queue.get(timeout=1.0) # Get input tokens here as well?
             print(f"queue size: {query_queue.qsize()} ({pid})", flush=True)
-            if len(input_prompt) == 0:
+            if len(query.prompt) == 0:
                 break
-            benchmarks = benchmark_mii(client=client, prompts=[input_prompt], max_new_tokens=max_new_tokens)
+            benchmarks = benchmark_mii(client=client, prompts=[query.prompt], max_new_tokens=max_new_tokens, start_time=query.start_time)
             [result_queue.put(benchmark) for benchmark in benchmarks]
         except queue.Empty:
             pass
@@ -257,7 +262,7 @@ def run_mii_benchmarks(
                     show_progress=True,
                 )
             )
-            [query_queue.put(prompt) for prompt in prompts]
+            [query_queue.put(Query(prompt)) for prompt in prompts]
 
         # Tokenizers must be initialized after fork.
         # So we need to fork before putting inputs to the queue.
@@ -286,7 +291,7 @@ def run_mii_benchmarks(
             while time.time() - time_start < 30:
                 if i >= len(prompts):
                     i = 0
-                query_queue.put(prompts[i])
+                query_queue.put(Query(prompts[i]))
                 i += 1
                 total_queries_sent += 1
                 time.sleep(1/queries_per_second)
