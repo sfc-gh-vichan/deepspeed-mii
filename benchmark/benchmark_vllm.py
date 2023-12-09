@@ -7,6 +7,8 @@ from typing import List
 from transformers import AutoTokenizer
 from benchmark_tools import Benchmark, Query, summarize_chat_benchmarks
 import threading
+import nest_asyncio
+nest_asyncio.apply()
 
 from vllm.engine.arg_utils import AsyncEngineArgs
 from vllm.engine.async_llm_engine import AsyncLLMEngine
