@@ -20,8 +20,6 @@ from vllm.model_executor.parallel_utils.parallel_state import destroy_model_para
 import torch
 
 from prompt_generator import PromptsGenerator
-import nest_asyncio
-nest_asyncio.apply()
 
 MAX_SEQUENCE_LENGTH = 4096
 
