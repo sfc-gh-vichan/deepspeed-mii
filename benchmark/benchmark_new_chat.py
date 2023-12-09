@@ -231,6 +231,7 @@ async def benchmark_vllm(
 def _run_parallel(
     client,
     model,
+    num_benchmark_queries,
     num_warmup_queries,
     barrier,
     query_queue,
@@ -250,7 +251,7 @@ def _run_parallel(
 
     barrier.wait()
 
-    for i in range(num_warmup_queries):
+    while query_queue.qsize() > num_benchmark_queries + 1:
         print(f"warmup queue size: {query_queue.qsize()} ({pid})", flush=True)
         input_prompt = query_queue.get(timeout=1.0)
 
@@ -354,13 +355,14 @@ async def run_benchmarks(
         result_queue = queue_cls()
 
         num_warmup_queries = warmup * len(prompt_lengths)
+        num_benchmark_queries = len(prompt_lengths)
 
         processes = []
         for _ in range(client_num):
             processes.append(
                 runnable_cls(
                     target=_run_parallel,
-                    args=(client, model, num_warmup_queries, barrier, query_queue, result_queue, max_new_tokens, client_num, vllm)
+                    args=(client, model, num_benchmark_queries, num_warmup_queries, barrier, query_queue, result_queue, max_new_tokens, client_num, vllm)
                 )
             )
         for p in processes:
