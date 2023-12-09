@@ -189,7 +189,7 @@ async def benchmark_vllm(
 
     start = time.time()
     print("sending inference request on vllm")
-    outputs = await client.generate(prompts[0], sampling_params, request_id)
+    outputs = client.generate(prompts[0], sampling_params, request_id)
     print("sent inference request on vllm")
 
     async for result in stream_results(outputs):
@@ -238,11 +238,11 @@ def _run_parallel(
 ) -> None:
     pid = os.getpid()
     session_id = f"test_session_p{pid}_t{threading.get_ident()}"
-    event_loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(event_loop)
 
     # Deepspeed only
     if client is None:
+        event_loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(event_loop)
         client = mii.client(model)
 
     barrier.wait()
@@ -252,7 +252,7 @@ def _run_parallel(
         input_prompt = query_queue.get(timeout=1.0)
 
         if vllm:
-            event_loop.run_until_complete(benchmark_vllm(client, [input_prompt], max_new_tokens, str(i)))
+            asyncio.run(benchmark_vllm(client, [input_prompt], max_new_tokens, str(i)))
         else:
             benchmark_mii(client, [input_prompt], max_new_tokens)
 
