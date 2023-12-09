@@ -117,7 +117,7 @@ class CallbackObject:
         self.first_token_time = 0.0
 
 
-async def benchmark_mii(
+def benchmark_mii(
     client,
     prompts: List[str],
     max_new_tokens: int
@@ -228,7 +228,7 @@ async def benchmark_vllm(
     return benchmarks
 
 
-async def _run_parallel(
+def _run_parallel(
     client,
     model,
     num_warmup_queries,
@@ -255,9 +255,9 @@ async def _run_parallel(
         input_prompt = query_queue.get(timeout=1.0)
 
         if vllm:
-            await benchmark_vllm(client, [input_prompt], max_new_tokens, str(i))
+            asyncio.run(benchmark_vllm(client, [input_prompt], max_new_tokens, str(i)))
         else:
-            await benchmark_mii(client, [input_prompt], max_new_tokens)
+            benchmark_mii(client, [input_prompt], max_new_tokens)
 
     barrier.wait()
 
@@ -271,9 +271,9 @@ async def _run_parallel(
 
             # Set max_new_tokens following normal distribution
             if vllm:
-                benchmarks = await benchmark_vllm(client, [input_prompt], max_new_tokens, str(num_warmup_queries))
+                benchmarks = asyncio.run(benchmark_vllm(client, [input_prompt], max_new_tokens, str(num_warmup_queries)))
             else:
-                benchmarks = await benchmark_mii(client, [input_prompt], max_new_tokens)
+                benchmarks = benchmark_mii(client, [input_prompt], max_new_tokens)
 
             [result_queue.put(benchmark) for benchmark in benchmarks]
     except queue.Empty:
@@ -304,6 +304,37 @@ async def run_benchmarks(
             start = time.time()
             client = AsyncLLMEngine.from_engine_args(engine_args)
             print('took ' + "{:.2f}".format(time.time()-start) + " seconds to start vllm engine")
+            sampling_params = SamplingParams(
+                temperature=0,  # get rid of nondeterminism.
+                top_p=1.0,
+                top_k=-1,
+                max_tokens=max_new_tokens
+            )
+            
+            async def stream_results(generator):
+                async for request_output in generator:
+                    outputs = [output for output in request_output.outputs]
+                    yield outputs[0]
+
+            benchmarks = []
+
+            callback_obj = CallbackObject()
+
+            start = time.time()
+            print("sending inference request on vllm")
+            if not client.is_running:
+                client.start_background_loop()
+            outputs = client.generate(prompts[0], sampling_params, "")
+            print(client.is_running)
+            print("sent inference request on vllm")
+
+            async for result in stream_results(outputs):
+                print(outputs)
+                if callback_obj.first:
+                    callback_obj.first_token_time = time.time()
+                    callback_obj.first = False
+                callback_obj.responses.append(result)
+            return []
         else:
             start = time.time()
             mii.serve(
@@ -427,7 +458,7 @@ async def main():
     #     vllm=False,
     # )
 
-    benchmarks = await run_benchmarks(
+    benchmarks = run_benchmarks(
         client_num=args.client_num,
         use_thread=args.use_thread,
         model=args.model,
