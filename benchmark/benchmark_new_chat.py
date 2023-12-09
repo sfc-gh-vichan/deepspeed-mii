@@ -183,7 +183,6 @@ def _run_mii_parallel(
     while query_queue.qsize() > num_benchmark_queries:
         print(f"warmup queue size: {query_queue.qsize()} ({pid})", flush=True)
         input_prompt = query_queue.get(timeout=1.0)
-
         benchmark_mii(client, [input_prompt], max_new_tokens)
 
     barrier.wait()
@@ -202,6 +201,120 @@ def _run_mii_parallel(
 
 
 async def run_benchmarks(
+    model: str,
+    prompt_lengths: int,
+    max_new_tokens: int,
+    warmup: int,
+) -> List[Benchmark]:
+    benchmarks: List[Benchmark] = []
+    client = None
+    try:
+        # Start vllm server
+        parser = argparse.ArgumentParser()
+        parser.add_argument("--host", type=str, default="0.0.0.0")
+        parser.add_argument("--port", type=int, default=8000)
+        parser = AsyncEngineArgs.add_cli_args(parser)
+        args, _ = parser.parse_known_args()
+        engine_args = AsyncEngineArgs.from_cli_args(args)
+        start = time.time()
+        client = AsyncLLMEngine.from_engine_args(engine_args)
+        print('took ' + "{:.2f}".format(time.time()-start) + " seconds to start vllm engine")
+
+        sampling_params = SamplingParams(
+            temperature=0,  # get rid of nondeterminism.
+            top_p=1.0,
+            top_k=-1,
+            max_tokens=max_new_tokens
+        )
+
+        prompt_generator = PromptsGenerator(tokenizer_path=model)
+
+        # Warmup
+        prompts = []
+        for prompt_length in prompt_lengths:
+            prompts.append(
+                prompt_generator.generate(
+                    average_token=prompt_length,
+                    variance=prompt_length*0.3,
+                    max_token=MAX_SEQUENCE_LENGTH-max_new_tokens,
+                    n=warmup,
+                    show_progress=True,
+                )
+            )
+        [client.generate(prompt, sampling_params, str(10000 + i)) for i, prompt in enumerate(prompts)]
+
+        # Prompts for benchmarking
+        prompts = []
+        for prompt_length in prompt_lengths:
+            prompts.append(
+                prompt_generator.generate(
+                    average_token=prompt_length,
+                    variance=prompt_length*0.3,
+                    max_token=MAX_SEQUENCE_LENGTH-max_new_tokens,
+                    n=1,
+                    show_progress=True,
+                )
+            )
+
+        async def stream(generator):
+            async for request_output in generator:
+                outputs = [output for output in request_output.outputs]
+                yield outputs[0]
+
+        async def stream_results(outputs, benchmark_queue: queue.Queue, callback_obj: CallbackObject):
+            async for result in stream(outputs):
+                print(outputs)
+                if callback_obj.first:
+                    callback_obj.first_token_time = time.time()
+                    callback_obj.first = False
+                callback_obj.responses.append(result)
+            end_time = time.time()
+            time_to_first_token = callback_obj.first_token_time - callback_obj.start_time
+            latency = end_time - callback_obj.start_time
+
+            input_lengths = []
+            output_lengths = []
+
+            # input_lengths.append(input_len)
+            input_lengths.append(0)
+            output_lengths.append(len(callback_obj.responses[-1].token_ids))
+
+            benchmark_queue.put(
+                Benchmark(
+                    framework='vllm',
+                    input_length=input_lengths,
+                    output_length=output_lengths,
+                    time_to_first_token=time_to_first_token,
+                    latency=latency,
+                    tensor_parallel=8,
+                )
+            )
+
+        tasks = []
+        benchmark_queue = queue.Queue()
+        for i, prompt in enumerate(prompts):
+            callback_obj = CallbackObject()
+            outputs = client.generate(prompt, sampling_params, str(i))
+            tasks.append(asyncio.create_task(stream_results(outputs, benchmark_queue, callback_obj)))
+        await asyncio.gather(*tasks)
+
+        return list(benchmark_queue.queue)
+    except Exception as e:
+        print(f"error: {repr(e)}")
+    finally:
+        try:
+            # Destroy
+            if client is not None:
+                destroy_model_parallel()
+                del client
+                gc.collect()
+                torch.cuda.empty_cache()
+                torch.distributed.destroy_process_group()
+        except Exception as e:
+            print(f'failed to destroy vllm: {e}')
+
+
+def run_mii_benchmarks(
     client_num: int,
     use_thread: bool,
     model: str,
@@ -209,216 +322,110 @@ async def run_benchmarks(
     prompt_lengths: int,
     max_new_tokens: int,
     warmup: int,
-    vllm: bool
 ) -> List[Benchmark]:
-    benchmarks: List[Benchmark] = []
     client = None
-    if vllm:
-        try:
-            # Start vllm server
-            parser = argparse.ArgumentParser()
-            parser.add_argument("--host", type=str, default="0.0.0.0")
-            parser.add_argument("--port", type=int, default=8000)
-            parser = AsyncEngineArgs.add_cli_args(parser)
-            args, _ = parser.parse_known_args()
-            engine_args = AsyncEngineArgs.from_cli_args(args)
-            start = time.time()
-            client = AsyncLLMEngine.from_engine_args(engine_args)
-            print('took ' + "{:.2f}".format(time.time()-start) + " seconds to start vllm engine")
+    try:
+        # Start mii server
+        start = time.time()
+        client = mii.serve(
+            model_name_or_path=model,
+            deployment_name=model,
+            tensor_parallel=tensor_parallel,
+            replica_num=1,
+        )
+        print('took ' + "{:.2f}".format(time.time()-start) + " seconds to start mii engine")
 
-            sampling_params = SamplingParams(
-                temperature=0,  # get rid of nondeterminism.
-                top_p=1.0,
-                top_k=-1,
-                max_tokens=max_new_tokens
+        if use_thread:
+            runnable_cls = threading.Thread
+            barrier_cls = threading.Barrier
+            queue_cls = queue.Queue
+        else:
+            runnable_cls = multiprocessing.Process
+            barrier_cls = multiprocessing.Barrier
+            queue_cls = multiprocessing.Queue
+        
+        barrier = barrier_cls(client_num + 1)
+        query_queue = queue_cls()
+        result_queue = queue_cls()
+
+        num_benchmark_queries = len(prompt_lengths)
+
+        processes = []
+        for _ in range(client_num):
+            processes.append(
+                runnable_cls(
+                    target=_run_mii_parallel,
+                    args=(model, num_benchmark_queries, barrier, query_queue, result_queue, max_new_tokens, client_num)
+                )
             )
+        for p in processes:
+            p.start()
+        
+        prompt_generator = PromptsGenerator(tokenizer_path=model)
 
-            # Warmup
-            prompts = []
-            for prompt_length in prompt_lengths:
-                prompts.append(
-                    prompt_generator.generate(
-                        average_token=prompt_length,
-                        variance=prompt_length*0.3,
-                        max_token=MAX_SEQUENCE_LENGTH-max_new_tokens,
-                        n=warmup,
-                        show_progress=True,
-                    )
+        # Generate warmup prompts. This will generate n * len(prompt_lengths) warmup queries
+        for prompt_length in prompt_lengths:
+            prompts = (
+                prompt_generator.generate(
+                    average_token=prompt_length,
+                    variance=prompt_length*0.3,
+                    max_token=MAX_SEQUENCE_LENGTH-max_new_tokens,
+                    n=warmup,
+                    show_progress=True,
                 )
-            [client.generate(prompt, sampling_params, str(10000 + i)) for i, prompt in enumerate(prompts)]
-
-            # Prompts for benchmarking
-            prompts = []
-            for prompt_length in prompt_lengths:
-                prompts.append(
-                    prompt_generator.generate(
-                        average_token=prompt_length,
-                        variance=prompt_length*0.3,
-                        max_token=MAX_SEQUENCE_LENGTH-max_new_tokens,
-                        n=1,
-                        show_progress=True,
-                    )
-                )
-
-            async def stream(generator):
-                async for request_output in generator:
-                    outputs = [output for output in request_output.outputs]
-                    yield outputs[0]
-
-            async def stream_results(outputs, benchmark_queue: queue.Queue, callback_obj: CallbackObject):
-                async for result in stream(outputs):
-                    print(outputs)
-                    if callback_obj.first:
-                        callback_obj.first_token_time = time.time()
-                        callback_obj.first = False
-                    callback_obj.responses.append(result)
-                end_time = time.time()
-                time_to_first_token = callback_obj.first_token_time - callback_obj.start_time
-                latency = end_time - callback_obj.start_time
-
-                input_lengths = []
-                output_lengths = []
-
-                # input_lengths.append(input_len)
-                input_lengths.append(0)
-                output_lengths.append(len(callback_obj.responses[-1].token_ids))
-
-                benchmark_queue.put(
-                    Benchmark(
-                        framework='vllm',
-                        input_length=input_lengths,
-                        output_length=output_lengths,
-                        time_to_first_token=time_to_first_token,
-                        latency=latency,
-                        tensor_parallel=8,
-                    )
-                )
-
-            tasks = []
-            benchmark_queue = queue.Queue()
-            for i, prompt in enumerate(prompts):
-                callback_obj = CallbackObject()
-                outputs = client.generate(prompt, sampling_params, str(i))
-                tasks.append(asyncio.create_task(stream_results(outputs, benchmark_queue, callback_obj)))
-            await asyncio.gather(*tasks)
-
-            return list(benchmark_queue.queue)
-        except Exception as e:
-            print(f"error: {repr(e)}")
-        finally:
-            try:
-                # Destroy
-                if client is not None:
-                    destroy_model_parallel()
-                    del client
-                    gc.collect()
-                    torch.cuda.empty_cache()
-                    torch.distributed.destroy_process_group()
-            except Exception as e:
-                print(f'failed to destroy vllm: {e}')
-    else:
-        try:
-            # Start mii server
-            start = time.time()
-            client = mii.serve(
-                model_name_or_path=model,
-                deployment_name=model,
-                tensor_parallel=tensor_parallel,
-                replica_num=1,
             )
-            print('took ' + "{:.2f}".format(time.time()-start) + " seconds to start mii engine")
-
-            if use_thread:
-                runnable_cls = threading.Thread
-                barrier_cls = threading.Barrier
-                queue_cls = queue.Queue
-            else:
-                runnable_cls = multiprocessing.Process
-                barrier_cls = multiprocessing.Barrier
-                queue_cls = multiprocessing.Queue
-            
-            barrier = barrier_cls(client_num + 1)
-            query_queue = queue_cls()
-            result_queue = queue_cls()
-
-            num_benchmark_queries = len(prompt_lengths)
-
-            processes = []
-            for _ in range(client_num):
-                processes.append(
-                    runnable_cls(
-                        target=_run_mii_parallel,
-                        args=(model, num_benchmark_queries, barrier, query_queue, result_queue, max_new_tokens, client_num)
-                    )
+            [query_queue.put(prompt) for prompt in prompts]
+        
+        # Generate prompts to run benchmark on
+        for prompt_length in prompt_lengths:
+            prompts = (
+                prompt_generator.generate(
+                    average_token=prompt_length,
+                    variance=prompt_length*0.3,
+                    max_token=MAX_SEQUENCE_LENGTH-max_new_tokens,
+                    n=1,
+                    show_progress=True,
                 )
-            for p in processes:
-                p.start()
-            
-            prompt_generator = PromptsGenerator(tokenizer_path=model)
+            )
+            [query_queue.put(prompt) for prompt in prompts]
 
-            # Generate warmup prompts. This will generate n * len(prompt_lengths) warmup queries
-            for prompt_length in prompt_lengths:
-                prompts = (
-                    prompt_generator.generate(
-                        average_token=prompt_length,
-                        variance=prompt_length*0.3,
-                        max_token=MAX_SEQUENCE_LENGTH-max_new_tokens,
-                        n=warmup,
-                        show_progress=True,
-                    )
-                )
-                [query_queue.put(prompt) for prompt in prompts]
-            
-            # Generate prompts to run benchmark on
-            for prompt_length in prompt_lengths:
-                prompts = (
-                    prompt_generator.generate(
-                        average_token=prompt_length,
-                        variance=prompt_length*0.3,
-                        max_token=MAX_SEQUENCE_LENGTH-max_new_tokens,
-                        n=1,
-                        show_progress=True,
-                    )
-                )
-                [query_queue.put(prompt) for prompt in prompts]
+        # Tokenizers must be initialized after fork.
+        # So we need to fork before putting inputs to the queue.
+        # We need this barrier to stop child processse from taking inputs before the main process puts them
+        barrier.wait()
+        # This barrier is to make sure that all clients have finished warmup
+        barrier.wait()
 
-            # Tokenizers must be initialized after fork.
-            # So we need to fork before putting inputs to the queue.
-            # We need this barrier to stop child processse from taking inputs before the main process puts them
-            barrier.wait()
-            # This barrier is to make sure that all clients have finished warmup
-            barrier.wait()
+        response_details = []
+        while len(response_details) < len(prompt_lengths):
+            res = result_queue.get()
+            # vLLM returns concatinated tokens
+            # if vllm:
+            #     tokenizer = AutoTokenizer.from_pretrained(model)
+            #     all_tokens = tokenizer.tokenize(res.generated_tokens)
+            #     res.generated_tokens = all_tokens[len(tokenizer.tokenize(res.prompt)):]
+            response_details.append(res)
 
-            response_details = []
-            while len(response_details) < len(prompt_lengths):
-                res = result_queue.get()
-                # vLLM returns concatinated tokens
-                # if vllm:
-                #     tokenizer = AutoTokenizer.from_pretrained(model)
-                #     all_tokens = tokenizer.tokenize(res.generated_tokens)
-                #     res.generated_tokens = all_tokens[len(tokenizer.tokenize(res.prompt)):]
-                response_details.append(res)
-
-            return response_details
+        return response_details
+    except Exception as e:
+        print(f"error: {repr(e)}")
+    finally:
+        try:
+            # Destroy
+            if client is not None:
+                client.terminate_server()
         except Exception as e:
-            print(f"error: {repr(e)}")
-        finally:
-            try:
-                # Destroy
-                if client is not None:
-                    await client.terminate_server()
-            except Exception as e:
-                print(f'failed to destroy mii: {e}')
+            print(f'failed to destroy mii: {e}')
 
 
-async def main():
+if __name__ ==  "__main__":
     args = parse_args()
     print('\n=============== Argument ===============')
     for key in vars(args):
         print('{}: {}'.format(key, vars(args)[key]))
     print('========================================')
 
-    benchmarks = await run_benchmarks(
+    benchmarks = run_benchmarks(
         client_num=args.client_num,
         use_thread=args.use_thread,
         model=args.model,
@@ -429,7 +436,7 @@ async def main():
         vllm=False,
     )
 
-    benchmarks = await run_benchmarks(
+    benchmarks = asyncio.run(run_benchmarks(
         client_num=args.client_num,
         use_thread=args.use_thread,
         model=args.model,
@@ -438,7 +445,7 @@ async def main():
         max_new_tokens=args.max_new_tokens,
         warmup=args.warmup,
         vllm=True,
-    )
+    ))
 
     benchmarks = sorted(benchmarks)
 
@@ -447,7 +454,3 @@ async def main():
     print('framework, avg_input, min_input, max_input, avg_output, min_output, max_output, time_to_first_token, latency(s), throughput, tensor_parallel')
     for i in benchmarks:
         print(i)
-
-
-if __name__ == "__main__":
-    asyncio.run(main())
