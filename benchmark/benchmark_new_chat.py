@@ -189,7 +189,7 @@ async def benchmark_vllm(
 
     start = time.time()
     print("sending inference request on vllm")
-    outputs = client.generate(prompts[0], sampling_params, request_id)
+    outputs = await client.generate(prompts[0], sampling_params, request_id)
     print("sent inference request on vllm")
 
     async for result in stream_results(outputs):
