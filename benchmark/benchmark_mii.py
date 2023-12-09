@@ -173,8 +173,6 @@ def _run_mii_parallel(
 ) -> None:
     pid = os.getpid()
     session_id = f"test_session_p{pid}_t{threading.get_ident()}"
-    event_loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(event_loop)
     
     client = mii.client(model)
 
