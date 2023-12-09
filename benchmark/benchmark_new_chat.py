@@ -127,13 +127,13 @@ def benchmark_mii(
     callback_obj = CallbackObject()
 
     def callback(response):
-        print("hello")
-        if callback_obj.first:
-            print("first token generated")
-            callback_obj.first_token_time = time.time()
-            callback_obj.first = False
-            print("first token recorded")
-        callback_obj.responses.append(response[0])
+        print(response)
+        # if callback_obj.first:
+        #     print("first token generated")
+        #     callback_obj.first_token_time = time.time()
+        #     callback_obj.first = False
+        #     print("first token recorded")
+        # callback_obj.responses.append(response[0])
 
     print("generating")
     client.generate(
