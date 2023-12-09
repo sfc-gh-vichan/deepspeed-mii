@@ -13,16 +13,9 @@ from transformers import AutoTokenizer
 import mii
 
 from prompt_generator import PromptsGenerator
+from common_arg_types import list_of_floats, list_of_ints
 
 MAX_SEQUENCE_LENGTH = 4096
-
-
-def list_of_ints(arg):
-    return list(map(int, arg.split(',')))
-
-
-def list_of_strings(arg):
-    return arg.split(',')
 
 
 def parse_args():
@@ -56,6 +49,11 @@ def parse_args():
                         action="store_true",
                         help="use thread for clients, else multiprocessing",
                         default=False)
+    parser.add_argument("-qps",
+                        "--queries_per_second",
+                        type=list_of_floats,
+                        help="List of queries per second",
+                        default='0.5,1.0')
     parser.add_argument('--model', type=str, required=True, help="path to the model")
 
     args, _ = parser.parse_known_args()
@@ -174,22 +172,27 @@ def _run_mii_parallel(
     barrier.wait()
 
     # Warmup
-    while query_queue.qsize() > num_benchmark_queries:
-        print(f"warmup queue size: {query_queue.qsize()} ({pid})", flush=True)
-        input_prompt = query_queue.get(timeout=1.0)
-        benchmark_mii(client=client, prompts=[input_prompt], max_new_tokens=max_new_tokens)
+    try:
+        while True:
+            print(f"warmup queue size: {query_queue.qsize()} ({pid})", flush=True)
+            input_prompt = query_queue.get(timeout=1.0)
+            benchmark_mii(client=client, prompts=[input_prompt], max_new_tokens=max_new_tokens)
+    except queue.Empty:
+        pass
 
     barrier.wait()
 
     time.sleep(random.uniform(0, client_num) * 0.01)
-    try:
-        while True:
+    while True:
+        try:
             print(f"queue size: {query_queue.qsize()} ({pid})", flush=True)
             input_prompt = query_queue.get(timeout=1.0) # Get input tokens here as well?
+            if len(input_prompt) == 0:
+                break
             benchmarks = benchmark_mii(client=client, prompts=[input_prompt], max_new_tokens=max_new_tokens)
             [result_queue.put(benchmark) for benchmark in benchmarks]
-    except queue.Empty:
-        print(f"queue is empty ({pid})")
+        except queue.Empty:
+            pass
 
     print(f"Worker ({pid}) finished. session_id: {session_id}")
 
@@ -199,7 +202,8 @@ def run_mii_benchmarks(
     use_thread: bool,
     model: str,
     tensor_parallel: int,
-    prompt_lengths: int,
+    queries_per_second: List[float],
+    prompt_lengths: List[int],
     max_new_tokens: int,
     warmup: int,
 ) -> List[Benchmark]:
@@ -254,19 +258,6 @@ def run_mii_benchmarks(
                 )
             )
             [query_queue.put(prompt) for prompt in prompts]
-        
-        # Generate prompts to run benchmark on
-        for prompt_length in prompt_lengths:
-            prompts = (
-                prompt_generator.generate(
-                    average_token=prompt_length,
-                    variance=prompt_length*0.3,
-                    max_token=MAX_SEQUENCE_LENGTH-max_new_tokens,
-                    n=1,
-                    show_progress=True,
-                )
-            )
-            [query_queue.put(prompt) for prompt in prompts]
 
         # Tokenizers must be initialized after fork.
         # So we need to fork before putting inputs to the queue.
@@ -275,14 +266,35 @@ def run_mii_benchmarks(
         # This barrier is to make sure that all clients have finished warmup
         barrier.wait()
 
+        total_queries_sent = 0
+
+        # Generate prompts to run benchmark on
+        for prompt_length in prompt_lengths:
+            prompts = (
+                prompt_generator.generate(
+                    average_token=prompt_length,
+                    variance=prompt_length*0.3,
+                    max_token=MAX_SEQUENCE_LENGTH-max_new_tokens,
+                    n=20,
+                    show_progress=True,
+                )
+            )
+            for qps in queries_per_second:
+                i = 0
+                time_start = time.time()
+                while time.time() - time_start < 60:
+                    if i >= len(prompts):
+                        i = 0
+                    query_queue.put(prompts[i])
+                    total_queries_sent += 1
+                    time.sleep(1/qps)
+        
+        # Sentinel to finish benchmarking
+        [query_queue.put("") for _ in range(client_num)]
+
         response_details = []
-        while len(response_details) < len(prompt_lengths):
+        while len(response_details) < len(total_queries_sent):
             res = result_queue.get()
-            # vLLM returns concatinated tokens
-            # if vllm:
-            #     tokenizer = AutoTokenizer.from_pretrained(model)
-            #     all_tokens = tokenizer.tokenize(res.generated_tokens)
-            #     res.generated_tokens = all_tokens[len(tokenizer.tokenize(res.prompt)):]
             response_details.append(res)
 
         return response_details
@@ -308,6 +320,7 @@ if __name__ ==  "__main__":
         use_thread=args.use_thread,
         model=args.model,
         tensor_parallel=args.tensor_parallel,
+        queries_per_second=args.queries_per_second,
         prompt_lengths=args.prompt_length,
         max_new_tokens=args.max_new_tokens,
         warmup=args.warmup,
