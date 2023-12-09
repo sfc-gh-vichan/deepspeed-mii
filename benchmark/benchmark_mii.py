@@ -266,6 +266,8 @@ def run_mii_benchmarks(
         # This barrier is to make sure that all clients have finished warmup
         barrier.wait()
 
+        time.sleep(5)
+
         total_queries_sent = 0
 
         # Generate prompts to run benchmark on
