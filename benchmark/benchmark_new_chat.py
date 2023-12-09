@@ -406,7 +406,7 @@ async def run_benchmarks(
         finally:
             try:
                 # Destroy
-                mii.client(model).terminate_server()
+                await mii.client(model).terminate_server()
             except Exception as e:
                 print(f'failed to destroy mii: {e}')
 
