@@ -237,7 +237,7 @@ def run_mii_benchmarks(
                 average_token=prompt_length,
                 variance=prompt_length*0.3,
                 max_token=MAX_SEQUENCE_LENGTH-max_new_tokens,
-                n=20,
+                n=100,
                 show_progress=True,
             )
         )
