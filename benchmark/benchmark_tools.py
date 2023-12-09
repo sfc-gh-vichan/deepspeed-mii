@@ -57,12 +57,12 @@ def summarize_benchmarks(
     max_token_output = max([benchmark.max_output for benchmark in benchmarks])
 
     min_time_to_first_token = min([benchmark.time_to_first_token for benchmark in benchmarks])
-    avg_time_to_first_token = min([benchmark.time_to_first_token for benchmark in benchmarks])
-    max_time_to_first_token = min([benchmark.time_to_first_token for benchmark in benchmarks])
+    avg_time_to_first_token = avg([benchmark.time_to_first_token for benchmark in benchmarks])
+    max_time_to_first_token = max([benchmark.time_to_first_token for benchmark in benchmarks])
 
     min_latency = min([benchmark.latency for benchmark in benchmarks])
-    avg_latency = min([benchmark.latency for benchmark in benchmarks])
-    max_latency = min([benchmark.latency for benchmark in benchmarks])
+    avg_latency = avg([benchmark.latency for benchmark in benchmarks])
+    max_latency = max([benchmark.latency for benchmark in benchmarks])
 
     # Sum up total input and output tokens, divide by the time it took to complete entire benchmark (last_request_end_time - first_request_start_time)
     # avg_throughput = (avg_token_input+avg_token_output)/avg_latency
