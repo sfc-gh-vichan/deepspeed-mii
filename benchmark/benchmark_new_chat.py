@@ -321,12 +321,7 @@ async def run_benchmarks(
             callback_obj = CallbackObject()
 
             start = time.time()
-            print("sending inference request on vllm")
-            if not client.is_running:
-                client.start_background_loop()
-            outputs = client.generate(prompts[0], sampling_params, "")
-            print(client.is_running)
-            print("sent inference request on vllm")
+            outputs = client.generate("hello", sampling_params, "")
 
             async for result in stream_results(outputs):
                 print(outputs)
