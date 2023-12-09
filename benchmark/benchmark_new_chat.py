@@ -200,7 +200,7 @@ def _run_mii_parallel(
     print(f"Worker ({pid}) finished. session_id: {session_id}")
 
 
-async def run_benchmarks(
+async def run_vllm_benchmarks(
     model: str,
     prompt_lengths: int,
     max_new_tokens: int,
@@ -425,7 +425,7 @@ if __name__ ==  "__main__":
         print('{}: {}'.format(key, vars(args)[key]))
     print('========================================')
 
-    benchmarks = run_benchmarks(
+    benchmarks = run_mii_benchmarks(
         client_num=args.client_num,
         use_thread=args.use_thread,
         model=args.model,
@@ -435,7 +435,7 @@ if __name__ ==  "__main__":
         warmup=args.warmup,
     )
 
-    benchmarks = asyncio.run(run_benchmarks(
+    benchmarks = asyncio.run(run_vllm_benchmarks(
         model=args.model,
         prompt_lengths=args.prompt_length,
         max_new_tokens=args.max_new_tokens,
