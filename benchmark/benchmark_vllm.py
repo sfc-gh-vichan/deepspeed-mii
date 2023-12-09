@@ -135,7 +135,7 @@ async def run_vllm_benchmarks(
         # Warmup
         prompts = []
         for prompt_length in prompt_lengths:
-            prompts.append(
+            prompts.extend(
                 prompt_generator.generate(
                     average_token=prompt_length,
                     variance=prompt_length*0.3,
@@ -144,13 +144,12 @@ async def run_vllm_benchmarks(
                     show_progress=True,
                 )
             )
-        [print(type(prompt)) for _, prompt in enumerate(prompts)]
         [client.generate(prompt=prompt, sampling_params=sampling_params, request_id=str(10000 + i)) for i, prompt in enumerate(prompts)]
 
         # Prompts for benchmarking
         prompts = []
         for prompt_length in prompt_lengths:
-            prompts.append(
+            prompts.extend(
                 prompt_generator.generate(
                     average_token=prompt_length,
                     variance=prompt_length*0.3,
@@ -197,7 +196,6 @@ async def run_vllm_benchmarks(
         tasks = []
         benchmark_queue = queue.Queue()
         for i, prompt in enumerate(prompts):
-            print(type(prompt))
             callback_obj = CallbackObject()
             outputs = client.generate(prompt=prompt, sampling_params=sampling_params, request_id=str(i))
             tasks.append(asyncio.create_task(stream_results(outputs, benchmark_queue, callback_obj)))
