@@ -53,8 +53,8 @@ def summarize_benchmarks(
     max_token_input = max([benchmark.max_input for benchmark in benchmarks])
 
     min_token_output = min([benchmark.max_output for benchmark in benchmarks])
-    avg_token_output = min([benchmark.max_output for benchmark in benchmarks])
-    max_token_output = min([benchmark.max_output for benchmark in benchmarks])
+    avg_token_output = avg([benchmark.max_output for benchmark in benchmarks])
+    max_token_output = max([benchmark.max_output for benchmark in benchmarks])
 
     min_time_to_first_token = min([benchmark.time_to_first_token for benchmark in benchmarks])
     avg_time_to_first_token = min([benchmark.time_to_first_token for benchmark in benchmarks])
