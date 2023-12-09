@@ -180,7 +180,7 @@ def _run_mii_parallel(
     try:
         while True:
             print(f"warmup queue size: {query_queue.qsize()} ({pid})", flush=True)
-            query = query_queue.get(timeout=1.0).prompt
+            query = query_queue.get(timeout=1.0)
             benchmark_mii(client=client, prompts=[query.prompt], max_new_tokens=max_new_tokens, start_time=query.start_time)
     except queue.Empty:
         pass
