@@ -342,7 +342,6 @@ async def run_benchmarks(
             query_queue = queue_cls()
             result_queue = queue_cls()
 
-            num_warmup_queries = warmup * len(prompt_lengths)
             num_benchmark_queries = len(prompt_lengths)
 
             processes = []
@@ -430,16 +429,16 @@ async def main():
         vllm=False,
     )
 
-    # benchmarks = await run_benchmarks(
-    #     client_num=args.client_num,
-    #     use_thread=args.use_thread,
-    #     model=args.model,
-    #     tensor_parallel=args.tensor_parallel,
-    #     prompt_lengths=args.prompt_length,
-    #     max_new_tokens=args.max_new_tokens,
-    #     warmup=args.warmup,
-    #     vllm=True,
-    # )
+    benchmarks = await run_benchmarks(
+        client_num=args.client_num,
+        use_thread=args.use_thread,
+        model=args.model,
+        tensor_parallel=args.tensor_parallel,
+        prompt_lengths=args.prompt_length,
+        max_new_tokens=args.max_new_tokens,
+        warmup=args.warmup,
+        vllm=True,
+    )
 
     benchmarks = sorted(benchmarks)
 
