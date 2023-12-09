@@ -458,7 +458,7 @@ async def main():
     #     vllm=False,
     # )
 
-    benchmarks = run_benchmarks(
+    benchmarks = await run_benchmarks(
         client_num=args.client_num,
         use_thread=args.use_thread,
         model=args.model,
