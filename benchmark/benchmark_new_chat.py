@@ -136,7 +136,9 @@ def benchmark_mii(
         # callback_obj.responses.append(response[0])
 
     print("generating")
+    print(client)
     print(prompts)
+    print(max_new_tokens)
     client.generate(
         prompts=prompts,
         streaming_fn=callback,
@@ -207,6 +209,110 @@ def _run_mii_parallel(
         print(f"queue is empty ({pid})")
 
     print(f"Worker ({pid}) finished. session_id: {session_id}")
+
+
+def run_mii_benchmarks(
+    client_num: int,
+    use_thread: bool,
+    model: str,
+    tensor_parallel: int,
+    prompt_lengths: int,
+    max_new_tokens: int,
+    warmup: int,
+) -> List[Benchmark]:
+    client = None
+    try:
+        # Start mii server
+        start = time.time()
+        client = mii.serve(
+            model_name_or_path=model,
+            deployment_name=model,
+            tensor_parallel=tensor_parallel,
+            replica_num=1,
+        )
+        print('took ' + "{:.2f}".format(time.time()-start) + " seconds to start mii engine")
+
+        if use_thread:
+            runnable_cls = threading.Thread
+            barrier_cls = threading.Barrier
+            queue_cls = queue.Queue
+        else:
+            runnable_cls = multiprocessing.Process
+            barrier_cls = multiprocessing.Barrier
+            queue_cls = multiprocessing.Queue
+        
+        barrier = barrier_cls(client_num + 1)
+        query_queue = queue_cls()
+        result_queue = queue_cls()
+
+        num_benchmark_queries = len(prompt_lengths)
+
+        processes = []
+        for _ in range(client_num):
+            processes.append(
+                runnable_cls(
+                    target=_run_mii_parallel,
+                    args=(model, num_benchmark_queries, barrier, query_queue, result_queue, max_new_tokens, client_num)
+                )
+            )
+        for p in processes:
+            p.start()
+        
+        prompt_generator = PromptsGenerator(tokenizer_path=model)
+
+        # Generate warmup prompts. This will generate n * len(prompt_lengths) warmup queries
+        for prompt_length in prompt_lengths:
+            prompts = (
+                prompt_generator.generate(
+                    average_token=prompt_length,
+                    variance=prompt_length*0.3,
+                    max_token=MAX_SEQUENCE_LENGTH-max_new_tokens,
+                    n=warmup,
+                    show_progress=True,
+                )
+            )
+            [query_queue.put(prompt) for prompt in prompts]
+        
+        # Generate prompts to run benchmark on
+        for prompt_length in prompt_lengths:
+            prompts = (
+                prompt_generator.generate(
+                    average_token=prompt_length,
+                    variance=prompt_length*0.3,
+                    max_token=MAX_SEQUENCE_LENGTH-max_new_tokens,
+                    n=1,
+                    show_progress=True,
+                )
+            )
+            [query_queue.put(prompt) for prompt in prompts]
+
+        # Tokenizers must be initialized after fork.
+        # So we need to fork before putting inputs to the queue.
+        # We need this barrier to stop child processse from taking inputs before the main process puts them
+        barrier.wait()
+        # This barrier is to make sure that all clients have finished warmup
+        barrier.wait()
+
+        response_details = []
+        while len(response_details) < len(prompt_lengths):
+            res = result_queue.get()
+            # vLLM returns concatinated tokens
+            # if vllm:
+            #     tokenizer = AutoTokenizer.from_pretrained(model)
+            #     all_tokens = tokenizer.tokenize(res.generated_tokens)
+            #     res.generated_tokens = all_tokens[len(tokenizer.tokenize(res.prompt)):]
+            response_details.append(res)
+
+        return response_details
+    except Exception as e:
+        print(f"error: {repr(e)}")
+    finally:
+        try:
+            # Destroy
+            if client is not None:
+                client.terminate_server()
+        except Exception as e:
+            print(f'failed to destroy mii: {e}')
 
 
 async def run_vllm_benchmarks(
@@ -321,110 +427,6 @@ async def run_vllm_benchmarks(
                 torch.distributed.destroy_process_group()
         except Exception as e:
             print(f'failed to destroy vllm: {e}')
-
-
-def run_mii_benchmarks(
-    client_num: int,
-    use_thread: bool,
-    model: str,
-    tensor_parallel: int,
-    prompt_lengths: int,
-    max_new_tokens: int,
-    warmup: int,
-) -> List[Benchmark]:
-    client = None
-    try:
-        # Start mii server
-        start = time.time()
-        client = mii.serve(
-            model_name_or_path=model,
-            deployment_name=model,
-            tensor_parallel=tensor_parallel,
-            replica_num=1,
-        )
-        print('took ' + "{:.2f}".format(time.time()-start) + " seconds to start mii engine")
-
-        if use_thread:
-            runnable_cls = threading.Thread
-            barrier_cls = threading.Barrier
-            queue_cls = queue.Queue
-        else:
-            runnable_cls = multiprocessing.Process
-            barrier_cls = multiprocessing.Barrier
-            queue_cls = multiprocessing.Queue
-        
-        barrier = barrier_cls(client_num + 1)
-        query_queue = queue_cls()
-        result_queue = queue_cls()
-
-        num_benchmark_queries = len(prompt_lengths)
-
-        processes = []
-        for _ in range(client_num):
-            processes.append(
-                runnable_cls(
-                    target=_run_mii_parallel,
-                    args=(model, num_benchmark_queries, barrier, query_queue, result_queue, max_new_tokens, client_num)
-                )
-            )
-        for p in processes:
-            p.start()
-        
-        prompt_generator = PromptsGenerator(tokenizer_path=model)
-
-        # Generate warmup prompts. This will generate n * len(prompt_lengths) warmup queries
-        for prompt_length in prompt_lengths:
-            prompts = (
-                prompt_generator.generate(
-                    average_token=prompt_length,
-                    variance=prompt_length*0.3,
-                    max_token=MAX_SEQUENCE_LENGTH-max_new_tokens,
-                    n=warmup,
-                    show_progress=True,
-                )
-            )
-            [query_queue.put(prompt) for prompt in prompts]
-        
-        # Generate prompts to run benchmark on
-        for prompt_length in prompt_lengths:
-            prompts = (
-                prompt_generator.generate(
-                    average_token=prompt_length,
-                    variance=prompt_length*0.3,
-                    max_token=MAX_SEQUENCE_LENGTH-max_new_tokens,
-                    n=1,
-                    show_progress=True,
-                )
-            )
-            [query_queue.put(prompt) for prompt in prompts]
-
-        # Tokenizers must be initialized after fork.
-        # So we need to fork before putting inputs to the queue.
-        # We need this barrier to stop child processse from taking inputs before the main process puts them
-        barrier.wait()
-        # This barrier is to make sure that all clients have finished warmup
-        barrier.wait()
-
-        response_details = []
-        while len(response_details) < len(prompt_lengths):
-            res = result_queue.get()
-            # vLLM returns concatinated tokens
-            # if vllm:
-            #     tokenizer = AutoTokenizer.from_pretrained(model)
-            #     all_tokens = tokenizer.tokenize(res.generated_tokens)
-            #     res.generated_tokens = all_tokens[len(tokenizer.tokenize(res.prompt)):]
-            response_details.append(res)
-
-        return response_details
-    except Exception as e:
-        print(f"error: {repr(e)}")
-    finally:
-        try:
-            # Destroy
-            if client is not None:
-                client.terminate_server()
-        except Exception as e:
-            print(f'failed to destroy mii: {e}')
 
 
 if __name__ ==  "__main__":
