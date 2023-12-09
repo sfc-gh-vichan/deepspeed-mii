@@ -171,10 +171,10 @@ async def run_vllm_benchmarks(
             query = Query(prompts[i])
             print(f"generating query {i}")
             outputs = client.generate(prompt=query.prompt, sampling_params=sampling_params, request_id=str(i))
-            results = stream_results(outputs, benchmark_queue, query)
+            tasks.append(stream_results(outputs, benchmark_queue, query))
             i += 1
             time.sleep(1/queries_per_second)
-        await asyncio.gather(*results)
+        await asyncio.gather(*tasks)
         return list(benchmark_queue.queue)
     except Exception as e:
         print(f"error: {repr(e)}")
