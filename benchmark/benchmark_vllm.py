@@ -172,7 +172,7 @@ async def run_vllm_benchmarks(
             query = Query(prompts[i])
             print(f"generating query {i}")
             outputs = client.generate(prompt=query.prompt, sampling_params=sampling_params, request_id=str(i))
-            stream_results(outputs, benchmark_queue, query)
+            asyncio.run(stream_results(outputs, benchmark_queue, query))
             i += 1
             time.sleep(1/queries_per_second)
         await asyncio.gather(*tasks)
