@@ -1,5 +1,12 @@
 from functools import total_ordering
 from typing import List
+import time
+
+class Query:
+    def __init__(self, prompt):
+        self.prompt = prompt
+        self.start_time = time.time()
+
 
 def avg_int(lt):
     return sum(lt) // len(lt)

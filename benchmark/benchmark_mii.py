@@ -7,7 +7,7 @@ import random
 import threading
 import time
 from typing import List
-from benchmark_tools import Benchmark, summarize_chat_benchmarks
+from benchmark_tools import Benchmark, Query, summarize_chat_benchmarks
 
 import mii
 from prompt_generator import PromptsGenerator
@@ -61,12 +61,6 @@ class CallbackObject:
         self.responses = []
         self.first = True
         self.first_token_time = 0.0
-
-
-class Query:
-    def __init__(self, prompt):
-        self.prompt = prompt
-        self.start_time = time.time()
 
 
 def benchmark_mii(
@@ -179,6 +173,7 @@ def run_mii_benchmarks(
         )
         print('took ' + "{:.2f}".format(time.time()-start) + " seconds to start mii engine")
 
+        # Start threads/processes for # of clients
         if use_thread:
             runnable_cls = threading.Thread
             barrier_cls = threading.Barrier
@@ -217,11 +212,9 @@ def run_mii_benchmarks(
         )
         [query_queue.put(Query(prompt)) for prompt in prompts]
 
-        # Tokenizers must be initialized after fork.
-        # So we need to fork before putting inputs to the queue.
-        # We need this barrier to stop child processse from taking inputs before the main process puts them
+        # Barrier to wait for all clients to initialized
         barrier.wait()
-        # This barrier is to make sure that all clients have finished warmup
+        # Barrier for all clients to finish warmup
         barrier.wait()
 
         time.sleep(5)
@@ -238,6 +231,8 @@ def run_mii_benchmarks(
                 show_progress=True,
             )
         )
+
+        # For 30 seconds, send a query every 1/qps
         i = 0
         time_start = time.time()
         while time.time() - time_start < 30:
