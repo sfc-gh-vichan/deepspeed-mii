@@ -160,7 +160,6 @@ def benchmark_mii(
 
 def _run_mii_parallel(
     model,
-    num_benchmark_queries,
     barrier,
     query_queue,
     result_queue,
@@ -180,17 +179,18 @@ def _run_mii_parallel(
     try:
         while True:
             print(f"warmup queue size: {query_queue.qsize()} ({pid})", flush=True)
-            query = query_queue.get(block=True)
+            query = query_queue.get(timeout=1)
             benchmark_mii(client=client, prompts=[query.prompt], max_new_tokens=max_new_tokens, start_time=query.start_time)
     except queue.Empty:
         pass
 
+    print(f"Worker ({pid}) finished warmup. session_id: {session_id}")
     barrier.wait()
 
     time.sleep(random.uniform(0, client_num) * 0.01)
     while True:
         try:
-            query = query_queue.get(block=True) # Get input tokens here as well?
+            query = query_queue.get(timeout=30) # Get input tokens here as well?
             print(f"queue size: {query_queue.qsize()} ({pid})", flush=True)
             if len(query.prompt) == 0:
                 break
@@ -236,14 +236,12 @@ def run_mii_benchmarks(
         query_queue = queue_cls()
         result_queue = queue_cls()
 
-        num_benchmark_queries = len(prompt_lengths)
-
         processes = []
         for _ in range(client_num):
             processes.append(
                 runnable_cls(
                     target=_run_mii_parallel,
-                    args=(model, num_benchmark_queries, barrier, query_queue, result_queue, max_new_tokens, client_num)
+                    args=(model, barrier, query_queue, result_queue, max_new_tokens, client_num)
                 )
             )
         for p in processes:
@@ -295,9 +293,6 @@ def run_mii_benchmarks(
                 i += 1
                 total_queries_sent += 1
                 time.sleep(1/queries_per_second)
-        
-        # Sentinel to finish benchmarking
-        [query_queue.put(Query()) for _ in range(client_num)]
 
         response_details = []
         while len(response_details) < total_queries_sent:
