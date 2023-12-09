@@ -13,7 +13,7 @@ from transformers import AutoTokenizer
 import mii
 
 from prompt_generator import PromptsGenerator
-from common_arg_types import list_of_floats, list_of_ints
+from common_arg_types import list_of_ints
 
 MAX_SEQUENCE_LENGTH = 4096
 
