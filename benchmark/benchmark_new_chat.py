@@ -125,12 +125,17 @@ def benchmark_mii(
 ) -> List[Benchmark]:
     benchmarks = []
     callback_obj = CallbackObject()
+
     def callback(response):
+        print("hello")
         if callback_obj.first:
+            print("first token generated")
             callback_obj.first_token_time = time.time()
             callback_obj.first = False
+            print("first token recorded")
         callback_obj.responses.append(response[0])
 
+    print("generating")
     client.generate(
         prompts=prompts,
         streaming_fn=callback,
@@ -138,6 +143,7 @@ def benchmark_mii(
         top_p=1.0,
         max_new_tokens=max_new_tokens
     )
+    print("generated")
     end_time = time.time()
     time_to_first_token = callback_obj.first_token_time - callback_obj.start_time
     latency = end_time - callback_obj.start_time
@@ -182,7 +188,9 @@ def _run_mii_parallel(
     # Warmup
     while query_queue.qsize() > num_benchmark_queries:
         print(f"warmup queue size: {query_queue.qsize()} ({pid})", flush=True)
+        print("getting query")
         input_prompt = query_queue.get(timeout=1.0)
+        print("benchmarking")
         benchmark_mii(client, [input_prompt], max_new_tokens)
 
     barrier.wait()
