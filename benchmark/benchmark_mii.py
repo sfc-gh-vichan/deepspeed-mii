@@ -1,6 +1,5 @@
 import argparse
 import asyncio
-import gc
 import multiprocessing
 import os
 import queue
@@ -12,12 +11,6 @@ from typing import List
 from transformers import AutoTokenizer
 
 import mii
-from vllm.engine.arg_utils import AsyncEngineArgs
-from vllm.engine.async_llm_engine import AsyncLLMEngine
-from vllm.sampling_params import SamplingParams
-from vllm.model_executor.parallel_utils.parallel_state import destroy_model_parallel
-
-import torch
 
 from prompt_generator import PromptsGenerator
 
@@ -173,7 +166,9 @@ def _run_mii_parallel(
 ) -> None:
     pid = os.getpid()
     session_id = f"test_session_p{pid}_t{threading.get_ident()}"
-    
+    event_loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(event_loop)
+
     client = mii.client(model)
 
     barrier.wait()
@@ -208,11 +203,10 @@ def run_mii_benchmarks(
     max_new_tokens: int,
     warmup: int,
 ) -> List[Benchmark]:
-    client = None
     try:
         # Start mii server
         start = time.time()
-        client = mii.serve(
+        mii.serve(
             model_name_or_path=model,
             deployment_name=model,
             tensor_parallel=tensor_parallel,
@@ -297,8 +291,7 @@ def run_mii_benchmarks(
     finally:
         try:
             # Destroy
-            if client is not None:
-                client.terminate_server()
+            mii.client(model).terminate_server()
         except Exception as e:
             print(f'failed to destroy mii: {e}')
 
