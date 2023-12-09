@@ -185,8 +185,8 @@ def _run_mii_parallel(
     time.sleep(random.uniform(0, client_num) * 0.01)
     while True:
         try:
-            print(f"queue size: {query_queue.qsize()} ({pid})", flush=True)
             input_prompt = query_queue.get(timeout=1.0) # Get input tokens here as well?
+            print(f"queue size: {query_queue.qsize()} ({pid})", flush=True)
             if len(input_prompt) == 0:
                 break
             benchmarks = benchmark_mii(client=client, prompts=[input_prompt], max_new_tokens=max_new_tokens)
@@ -296,11 +296,8 @@ def run_mii_benchmarks(
 
         response_details = []
         while len(response_details) < len(total_queries_sent):
-            try:
-                res = result_queue.get()
-                response_details.append(res)
-            except queue.Empty:
-                continue
+            res = result_queue.get(block=True)
+            response_details.append(res)
 
         return response_details
     except Exception as e:
