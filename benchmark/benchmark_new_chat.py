@@ -123,9 +123,7 @@ def benchmark_mii(
     prompts: List[str],
     max_new_tokens: int
 ) -> List[Benchmark]:
-
     benchmarks = []
-
     callback_obj = CallbackObject()
     def callback(response):
         if callback_obj.first:
@@ -160,7 +158,6 @@ def benchmark_mii(
             tensor_parallel=8,
         )
     )
-
     return benchmarks
 
 
