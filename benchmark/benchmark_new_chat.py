@@ -117,7 +117,7 @@ class CallbackObject:
         self.first_token_time = 0.0
 
 
-def benchmark_mii(
+async def benchmark_mii(
     client,
     prompts: List[str],
     max_new_tokens: int
@@ -228,7 +228,7 @@ async def benchmark_vllm(
     return benchmarks
 
 
-def _run_parallel(
+async def _run_parallel(
     client,
     model,
     num_warmup_queries,
@@ -255,9 +255,9 @@ def _run_parallel(
         input_prompt = query_queue.get(timeout=1.0)
 
         if vllm:
-            asyncio.run(benchmark_vllm(client, [input_prompt], max_new_tokens, str(i)))
+            await benchmark_vllm(client, [input_prompt], max_new_tokens, str(i))
         else:
-            benchmark_mii(client, [input_prompt], max_new_tokens)
+            await benchmark_mii(client, [input_prompt], max_new_tokens)
 
     barrier.wait()
 
@@ -271,9 +271,9 @@ def _run_parallel(
 
             # Set max_new_tokens following normal distribution
             if vllm:
-                benchmarks = asyncio.run(benchmark_vllm(client, [input_prompt], max_new_tokens, str(num_warmup_queries)))
+                benchmarks = await benchmark_vllm(client, [input_prompt], max_new_tokens, str(num_warmup_queries))
             else:
-                benchmarks = benchmark_mii(client, [input_prompt], max_new_tokens)
+                benchmarks = await benchmark_mii(client, [input_prompt], max_new_tokens)
 
             [result_queue.put(benchmark) for benchmark in benchmarks]
     except queue.Empty:
@@ -282,7 +282,7 @@ def _run_parallel(
     print(f"Worker ({pid}) finished. session_id: {session_id}")
 
 
-def run_benchmarks(
+async def run_benchmarks(
     client_num: int,
     use_thread: bool,
     model: str,
@@ -409,7 +409,7 @@ def run_benchmarks(
                 print(f'failed to destroy mii: {e}')
 
 
-if __name__ == "__main__":
+async def main():
     args = parse_args()
     print('\n=============== Argument ===============')
     for key in vars(args):
@@ -427,7 +427,7 @@ if __name__ == "__main__":
     #     vllm=False,
     # )
 
-    benchmarks = run_benchmarks(
+    benchmarks = await run_benchmarks(
         client_num=args.client_num,
         use_thread=args.use_thread,
         model=args.model,
@@ -445,3 +445,7 @@ if __name__ == "__main__":
     print('framework, avg_input, min_input, max_input, avg_output, min_output, max_output, time_to_first_token, latency(s), throughput, tensor_parallel')
     for i in benchmarks:
         print(i)
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
