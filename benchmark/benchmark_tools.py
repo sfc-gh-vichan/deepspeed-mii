@@ -1,21 +1,24 @@
 from functools import total_ordering
 from typing import List
 
-def avg(lt):
+def avg_int(lt):
     return sum(lt) // len(lt)
+
+def avg_float(lt):
+    return sum(lt) / len(lt)
 
 @total_ordering
 class Benchmark:
     def __init__(self, framework, input_length, output_length, time_to_first_token, latency, tensor_parallel):
 
-        self.avg_input = avg(input_length)
+        self.avg_input = avg_int(input_length)
 
         self.framework = framework
 
         self.max_input = max(input_length)
         self.min_input = min(input_length)
 
-        self.avg_output = avg(output_length)
+        self.avg_output = avg_int(output_length)
         self.max_output = max(output_length)
         self.min_output = min(output_length)
 
@@ -49,19 +52,19 @@ def summarize_benchmarks(
     benchmarks: List[Benchmark],
 ) -> None:
     min_token_input = min([benchmark.max_input for benchmark in benchmarks])
-    avg_token_input = avg([benchmark.max_input for benchmark in benchmarks])
+    avg_token_input = avg_int([benchmark.max_input for benchmark in benchmarks])
     max_token_input = max([benchmark.max_input for benchmark in benchmarks])
 
     min_token_output = min([benchmark.max_output for benchmark in benchmarks])
-    avg_token_output = avg([benchmark.max_output for benchmark in benchmarks])
+    avg_token_output = avg_int([benchmark.max_output for benchmark in benchmarks])
     max_token_output = max([benchmark.max_output for benchmark in benchmarks])
 
     min_time_to_first_token = min([benchmark.time_to_first_token for benchmark in benchmarks])
-    avg_time_to_first_token = avg([benchmark.time_to_first_token for benchmark in benchmarks])
+    avg_time_to_first_token = avg_float([benchmark.time_to_first_token for benchmark in benchmarks])
     max_time_to_first_token = max([benchmark.time_to_first_token for benchmark in benchmarks])
 
     min_latency = min([benchmark.latency for benchmark in benchmarks])
-    avg_latency = avg([benchmark.latency for benchmark in benchmarks])
+    avg_latency = avg_float([benchmark.latency for benchmark in benchmarks])
     max_latency = max([benchmark.latency for benchmark in benchmarks])
 
     # Sum up total input and output tokens, divide by the time it took to complete entire benchmark (last_request_end_time - first_request_start_time)
