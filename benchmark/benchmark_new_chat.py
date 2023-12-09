@@ -136,6 +136,7 @@ def benchmark_mii(
         # callback_obj.responses.append(response[0])
 
     print("generating")
+    print(prompts)
     client.generate(
         prompts=prompts,
         streaming_fn=callback,
@@ -191,7 +192,7 @@ def _run_mii_parallel(
         print("getting query")
         input_prompt = query_queue.get(timeout=1.0)
         print("benchmarking")
-        benchmark_mii(client, [input_prompt], max_new_tokens)
+        benchmark_mii(client=client, prompts=[input_prompt], max_new_tokens=max_new_tokens)
 
     barrier.wait()
 
@@ -200,7 +201,7 @@ def _run_mii_parallel(
         while True:
             print(f"queue size: {query_queue.qsize()} ({pid})", flush=True)
             input_prompt = query_queue.get(timeout=1.0) # Get input tokens here as well?
-            benchmarks = benchmark_mii(client, [input_prompt], max_new_tokens)
+            benchmarks = benchmark_mii(client=client, prompts=[input_prompt], max_new_tokens=max_new_tokens)
             [result_queue.put(benchmark) for benchmark in benchmarks]
     except queue.Empty:
         print(f"queue is empty ({pid})")
