@@ -132,6 +132,7 @@ async def run_vllm_benchmarks(
 
         async def stream_results(outputs, benchmark_queue: queue.Queue, query: Query):
             callback_obj = CallbackObject()
+            print("==========================================================")
             async for result in stream(outputs):
                 if callback_obj.first:
                     callback_obj.first_token_time = time.time()
