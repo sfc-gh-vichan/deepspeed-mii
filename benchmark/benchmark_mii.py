@@ -51,9 +51,9 @@ def parse_args():
                         default=False)
     parser.add_argument("-qps",
                         "--queries_per_second",
-                        type=list_of_floats,
+                        type=float,
                         help="List of queries per second",
-                        default='0.5,1.0')
+                        default=0.5)
     parser.add_argument('--model', type=str, required=True, help="path to the model")
 
     args, _ = parser.parse_known_args()
@@ -202,7 +202,7 @@ def run_mii_benchmarks(
     use_thread: bool,
     model: str,
     tensor_parallel: int,
-    queries_per_second: List[float],
+    queries_per_second: float,
     prompt_lengths: List[int],
     max_new_tokens: int,
     warmup: int,
@@ -281,15 +281,15 @@ def run_mii_benchmarks(
                     show_progress=True,
                 )
             )
-            for qps in queries_per_second:
-                i = 0
-                time_start = time.time()
-                while time.time() - time_start < 60:
-                    if i >= len(prompts):
-                        i = 0
-                    query_queue.put(prompts[i])
-                    total_queries_sent += 1
-                    time.sleep(1/qps)
+            i = 0
+            time_start = time.time()
+            while time.time() - time_start < 60:
+                if i >= len(prompts):
+                    i = 0
+                query_queue.put(prompts[i])
+                i += 1
+                total_queries_sent += 1
+                time.sleep(1/queries_per_second)
         
         # Sentinel to finish benchmarking
         [query_queue.put("") for _ in range(client_num)]
