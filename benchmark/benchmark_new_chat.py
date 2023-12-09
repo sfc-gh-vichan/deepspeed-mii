@@ -311,11 +311,12 @@ async def run_benchmarks(
         finally:
             try:
                 # Destroy
-                destroy_model_parallel()
-                del client
-                gc.collect()
-                torch.cuda.empty_cache()
-                torch.distributed.destroy_process_group()
+                if client is not None:
+                    destroy_model_parallel()
+                    del client
+                    gc.collect()
+                    torch.cuda.empty_cache()
+                    torch.distributed.destroy_process_group()
             except Exception as e:
                 print(f'failed to destroy vllm: {e}')
     else:
@@ -407,7 +408,8 @@ async def run_benchmarks(
         finally:
             try:
                 # Destroy
-                await client.terminate_server()
+                if client is not None:
+                    await client.terminate_server()
             except Exception as e:
                 print(f'failed to destroy mii: {e}')
 
