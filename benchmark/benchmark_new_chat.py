@@ -20,6 +20,8 @@ from vllm.model_executor.parallel_utils.parallel_state import destroy_model_para
 import torch
 
 from prompt_generator import PromptsGenerator
+import nest_asyncio
+nest_asyncio.apply()
 
 MAX_SEQUENCE_LENGTH = 4096
 
@@ -215,6 +217,7 @@ async def run_benchmarks(
     vllm: bool
 ) -> List[Benchmark]:
     benchmarks: List[Benchmark] = []
+    client = None
     if vllm:
         try:
             # Start vllm server
@@ -321,7 +324,7 @@ async def run_benchmarks(
         try:
             # Start mii server
             start = time.time()
-            mii.serve(
+            client = mii.serve(
                 model_name_or_path=model,
                 deployment_name=model,
                 tensor_parallel=tensor_parallel,
@@ -406,7 +409,7 @@ async def run_benchmarks(
         finally:
             try:
                 # Destroy
-                await mii.client(model).terminate_server()
+                await client.terminate_server()
             except Exception as e:
                 print(f'failed to destroy mii: {e}')
 
