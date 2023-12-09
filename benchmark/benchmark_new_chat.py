@@ -442,18 +442,7 @@ async def main():
         print('{}: {}'.format(key, vars(args)[key]))
     print('========================================')
 
-    # benchmarks = run_benchmarks(
-    #     client_num=args.client_num,
-    #     use_thread=args.use_thread,
-    #     model=args.model,
-    #     tensor_parallel=args.tensor_parallel,
-    #     prompt_lengths=args.prompt_length,
-    #     max_new_tokens=args.max_new_tokens,
-    #     warmup=args.warmup,
-    #     vllm=False,
-    # )
-
-    benchmarks = await run_benchmarks(
+    benchmarks = run_benchmarks(
         client_num=args.client_num,
         use_thread=args.use_thread,
         model=args.model,
@@ -461,8 +450,19 @@ async def main():
         prompt_lengths=args.prompt_length,
         max_new_tokens=args.max_new_tokens,
         warmup=args.warmup,
-        vllm=True,
+        vllm=False,
     )
+
+    # benchmarks = await run_benchmarks(
+    #     client_num=args.client_num,
+    #     use_thread=args.use_thread,
+    #     model=args.model,
+    #     tensor_parallel=args.tensor_parallel,
+    #     prompt_lengths=args.prompt_length,
+    #     max_new_tokens=args.max_new_tokens,
+    #     warmup=args.warmup,
+    #     vllm=True,
+    # )
 
     benchmarks = sorted(benchmarks)
 
