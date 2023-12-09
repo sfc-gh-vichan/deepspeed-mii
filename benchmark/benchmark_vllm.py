@@ -48,16 +48,6 @@ def parse_args():
                         type=int,
                         help="Tensor parallelism",
                         default='1')
-    parser.add_argument("-c",
-                        "--client_num",
-                        type=int,
-                        help="Number of clients",
-                        default='1')
-    parser.add_argument("-t",
-                        "--use_thread",
-                        action="store_true",
-                        help="use thread for clients, else multiprocessing",
-                        default=False)
     parser.add_argument('--model', type=str, required=True, help="path to the model")
 
     args, _ = parser.parse_known_args()
@@ -154,7 +144,7 @@ async def run_vllm_benchmarks(
                     show_progress=True,
                 )
             )
-        [client.generate(prompt, sampling_params, str(10000 + i)) for i, prompt in enumerate(prompts)]
+        [client.generate(prompt=prompt, sampling_params=sampling_params, request_id=str(10000 + i)) for i, prompt in enumerate(prompts)]
 
         # Prompts for benchmarking
         prompts = []
@@ -207,7 +197,7 @@ async def run_vllm_benchmarks(
         benchmark_queue = queue.Queue()
         for i, prompt in enumerate(prompts):
             callback_obj = CallbackObject()
-            outputs = client.generate(prompt, sampling_params, str(i))
+            outputs = client.generate(prompt=prompt, sampling_params=sampling_params, request_id=str(i))
             tasks.append(asyncio.create_task(stream_results(outputs, benchmark_queue, callback_obj)))
         await asyncio.gather(*tasks)
 
