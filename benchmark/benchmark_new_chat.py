@@ -189,7 +189,8 @@ async def benchmark_vllm(
 
     start = time.time()
     print("sending inference request on vllm")
-    print(client.is_running)
+    if not client.is_running:
+        client.start_background_loop()
     outputs = client.generate(prompts[0], sampling_params, request_id)
     print(client.is_running)
     print("sent inference request on vllm")
