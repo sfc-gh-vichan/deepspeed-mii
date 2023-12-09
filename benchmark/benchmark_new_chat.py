@@ -188,9 +188,12 @@ async def benchmark_vllm(
     callback_obj = CallbackObject()
 
     start = time.time()
+    print("sending inference request on vllm")
     outputs = client.generate(prompts[0], sampling_params, request_id)
+    print("sent inference request on vllm")
 
     async for result in stream_results(outputs):
+        print(outputs)
         if callback_obj.first:
             callback_obj.first_token_time = time.time()
             callback_obj.first = False
@@ -199,6 +202,7 @@ async def benchmark_vllm(
     end = time.time()
     time_to_first_token = callback_obj.first_token_time - start
     latency = end - start
+    print("finished inference request on vllm")
 
     input_lengths = []
     output_lengths = []
