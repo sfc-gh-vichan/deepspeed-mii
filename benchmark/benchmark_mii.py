@@ -32,8 +32,8 @@ def parse_args():
     parser.add_argument("-l",
                         "--prompt_length",
                         help="average number of tokens each prompt.",
-                        type=list_of_ints,
-                        default='1024')
+                        type=int,
+                        default=1024)
     parser.add_argument("-tp",
                         "--tensor_parallel",
                         type=int,
@@ -167,7 +167,7 @@ def run_mii_benchmarks(
     model: str,
     tensor_parallel: int,
     queries_per_second: float,
-    prompt_lengths: List[int],
+    prompt_length: int,
     max_new_tokens: int,
     warmup: int,
 ) -> List[Benchmark]:
@@ -209,17 +209,16 @@ def run_mii_benchmarks(
         prompt_generator = PromptsGenerator(tokenizer_path=model)
 
         # Generate warmup prompts. This will generate n * len(prompt_lengths) warmup queries
-        for prompt_length in prompt_lengths:
-            prompts = (
-                prompt_generator.generate(
-                    average_token=prompt_length,
-                    variance=prompt_length*0.3,
-                    max_token=MAX_SEQUENCE_LENGTH-max_new_tokens,
-                    n=warmup*client_num,
-                    show_progress=True,
-                )
+        prompts = (
+            prompt_generator.generate(
+                average_token=prompt_length,
+                variance=prompt_length*0.3,
+                max_token=MAX_SEQUENCE_LENGTH-max_new_tokens,
+                n=warmup*client_num,
+                show_progress=True,
             )
-            [query_queue.put(Query(prompt)) for prompt in prompts]
+        )
+        [query_queue.put(Query(prompt)) for prompt in prompts]
 
         # Tokenizers must be initialized after fork.
         # So we need to fork before putting inputs to the queue.
@@ -233,25 +232,24 @@ def run_mii_benchmarks(
         total_queries_sent = 0
 
         # Generate prompts to run benchmark on
-        for prompt_length in prompt_lengths:
-            prompts = (
-                prompt_generator.generate(
-                    average_token=prompt_length,
-                    variance=prompt_length*0.3,
-                    max_token=MAX_SEQUENCE_LENGTH-max_new_tokens,
-                    n=20,
-                    show_progress=True,
-                )
+        prompts = (
+            prompt_generator.generate(
+                average_token=prompt_length,
+                variance=prompt_length*0.3,
+                max_token=MAX_SEQUENCE_LENGTH-max_new_tokens,
+                n=20,
+                show_progress=True,
             )
-            i = 0
-            time_start = time.time()
-            while time.time() - time_start < 30:
-                if i >= len(prompts):
-                    i = 0
-                query_queue.put(Query(prompts[i]))
-                i += 1
-                total_queries_sent += 1
-                time.sleep(1/queries_per_second)
+        )
+        i = 0
+        time_start = time.time()
+        while time.time() - time_start < 30:
+            if i >= len(prompts):
+                i = 0
+            query_queue.put(Query(prompts[i]))
+            i += 1
+            total_queries_sent += 1
+            time.sleep(1/queries_per_second)
 
         response_details = []
         while len(response_details) < total_queries_sent:
@@ -282,7 +280,7 @@ if __name__ ==  "__main__":
         model=args.model,
         tensor_parallel=args.tensor_parallel,
         queries_per_second=args.queries_per_second,
-        prompt_lengths=args.prompt_length,
+        prompt_length=args.prompt_length,
         max_new_tokens=args.max_new_tokens,
         warmup=args.warmup,
     )
@@ -295,4 +293,9 @@ if __name__ ==  "__main__":
     for i in benchmarks:
         print(i)
     
-    summarize_benchmarks(benchmarks)
+    summarize_benchmarks(
+        token_input=args.prompt_length,
+        queries_per_second=args.queries_per_second,
+        clients=args.client_num,
+        benchmarks=benchmarks
+    )
