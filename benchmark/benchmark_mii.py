@@ -296,8 +296,11 @@ def run_mii_benchmarks(
 
         response_details = []
         while len(response_details) < len(total_queries_sent):
-            res = result_queue.get()
-            response_details.append(res)
+            try:
+                res = result_queue.get()
+                response_details.append(res)
+            except queue.Empty:
+                continue
 
         return response_details
     except Exception as e:
