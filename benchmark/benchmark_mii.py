@@ -7,13 +7,10 @@ import random
 import threading
 import time
 from typing import List
-from transformers import AutoTokenizer
-from benchmark_tools import Benchmark, summarize_benchmarks
+from benchmark_tools import Benchmark, summarize_chat_benchmarks
 
 import mii
-
 from prompt_generator import PromptsGenerator
-from common_arg_types import list_of_ints
 
 MAX_SEQUENCE_LENGTH = 4096
 
@@ -284,18 +281,10 @@ if __name__ ==  "__main__":
         max_new_tokens=args.max_new_tokens,
         warmup=args.warmup,
     )
-
-    benchmarks = sorted(benchmarks)
-
-    print('!!!---Printing results---!!!')
-    # Output results as a csv
-    print('framework, input, output, time_to_first_token, latency(s), throughput, tensor_parallel')
-    for i in benchmarks:
-        print(i)
     
-    summarize_benchmarks(
+    summarize_chat_benchmarks(
         token_input=args.prompt_length,
         queries_per_second=args.queries_per_second,
         clients=args.client_num,
-        benchmarks=benchmarks
+        benchmarks=sorted(benchmarks),
     )

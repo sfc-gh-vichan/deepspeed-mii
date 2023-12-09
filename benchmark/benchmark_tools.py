@@ -29,8 +29,8 @@ class Benchmark:
 
     def __str__(self):
         return f'{self.framework}' \
-            f', {self.avg_input}, {self.min_input}, {self.max_input}' \
-            f', {self.avg_output}, {self.min_output}, {self.max_output}' \
+            f', {self.max_input}' \
+            f', {self.max_output}' \
             f', {self.time_to_first_token: .3f}' \
             f', {self.latency: .2f}' \
             f', {self.throughput: .2f}' \
@@ -45,7 +45,7 @@ class Benchmark:
             return self.framework < other.framework
 
 
-def summarize_benchmarks(
+def summarize_chat_benchmarks(
     token_input: int,
     queries_per_second: int,
     clients: int,
@@ -67,8 +67,11 @@ def summarize_benchmarks(
     avg_latency = avg_float([benchmark.latency for benchmark in benchmarks])
     max_latency = max([benchmark.latency for benchmark in benchmarks])
 
-    # Sum up total input and output tokens, divide by the time it took to complete entire benchmark (last_request_end_time - first_request_start_time)
-    # avg_throughput = (avg_token_input+avg_token_output)/avg_latency
+    print('!!!---Printing results---!!!')
+    # Output results as a csv
+    print('framework, input, output, time_to_first_token, latency(s), throughput, tensor_parallel')
+    for i in benchmarks:
+        print(i)
     
     print(f"token_input: {token_input}")
     print(f"queries_per_second: {queries_per_second}")
