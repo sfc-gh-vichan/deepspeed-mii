@@ -171,7 +171,6 @@ async def run_vllm_benchmarks(
             outputs = client.generate(prompt=query.prompt, sampling_params=sampling_params, request_id=str(i))
             tasks.append(asyncio.create_task(stream_results(outputs, benchmark_queue, query)))
             i += 1
-            total_queries_sent += 1
             time.sleep(1/queries_per_second)
         await asyncio.gather(*tasks)
         return list(benchmark_queue.queue)
