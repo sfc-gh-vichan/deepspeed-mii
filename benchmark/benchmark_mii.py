@@ -295,7 +295,7 @@ def run_mii_benchmarks(
         [query_queue.put("") for _ in range(client_num)]
 
         response_details = []
-        while len(response_details) < len(total_queries_sent):
+        while len(response_details) < total_queries_sent:
             res = result_queue.get(block=True)
             response_details.append(res)
 
