@@ -442,7 +442,7 @@ async def main():
         print('{}: {}'.format(key, vars(args)[key]))
     print('========================================')
 
-    benchmarks = run_benchmarks(
+    benchmarks = await run_benchmarks(
         client_num=args.client_num,
         use_thread=args.use_thread,
         model=args.model,
