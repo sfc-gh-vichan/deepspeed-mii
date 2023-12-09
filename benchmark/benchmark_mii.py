@@ -6,9 +6,9 @@ import queue
 import random
 import threading
 import time
-from functools import total_ordering
 from typing import List
 from transformers import AutoTokenizer
+from benchmark_tools import Benchmark, summarize_benchmarks
 
 import mii
 
@@ -58,47 +58,6 @@ def parse_args():
 
     args, _ = parser.parse_known_args()
     return args
-
-@total_ordering
-class Benchmark:
-    def __init__(self, framework, input_length, output_length, time_to_first_token, latency, tensor_parallel):
-
-        def _avg(lt):
-            return sum(lt) // len(lt)
-
-        self.avg_input = _avg(input_length)
-
-        self.framework = framework
-
-        self.max_input = max(input_length)
-        self.min_input = min(input_length)
-
-        self.avg_output = _avg(output_length)
-        self.max_output = max(output_length)
-        self.min_output = min(output_length)
-
-        self.tensor_parallel = tensor_parallel
-        self.throughput = (sum(input_length)+sum(output_length))/latency
-        self.latency = latency
-        self.time_to_first_token = time_to_first_token
-
-    def __str__(self):
-        return f'{self.framework}' \
-            f', {self.avg_input}, {self.min_input}, {self.max_input}' \
-            f', {self.avg_output}, {self.min_output}, {self.max_output}' \
-            f', {self.time_to_first_token: .3f}' \
-            f', {self.latency: .2f}' \
-            f', {self.throughput: .2f}' \
-            f', {self.tensor_parallel}'
-
-    def __lt__(self, other):
-        if self.avg_input != other.avg_input:
-            return self.avg_input < other.avg_input
-        if self.tensor_parallel != other.tensor_parallel:
-            return self.tensor_parallel < other.tensor_parallel
-        if self.framework != other.framework:
-            return self.framework < other.framework
-
 
 class CallbackObject:
     def __init__(self):
@@ -178,8 +137,8 @@ def _run_mii_parallel(
     # Warmup
     try:
         while True:
-            print(f"warmup queue size: {query_queue.qsize()} ({pid})", flush=True)
             query = query_queue.get(timeout=1)
+            print(f"warmup queue size: {query_queue.qsize()} ({pid})", flush=True)
             benchmark_mii(client=client, prompts=[query.prompt], max_new_tokens=max_new_tokens, start_time=query.start_time)
     except queue.Empty:
         pass
@@ -256,7 +215,7 @@ def run_mii_benchmarks(
                     average_token=prompt_length,
                     variance=prompt_length*0.3,
                     max_token=MAX_SEQUENCE_LENGTH-max_new_tokens,
-                    n=warmup,
+                    n=warmup*client_num,
                     show_progress=True,
                 )
             )
@@ -332,6 +291,8 @@ if __name__ ==  "__main__":
 
     print('!!!---Printing results---!!!')
     # Output results as a csv
-    print('framework, avg_input, min_input, max_input, avg_output, min_output, max_output, time_to_first_token, latency(s), throughput, tensor_parallel')
+    print('framework, input, output, time_to_first_token, latency(s), throughput, tensor_parallel')
     for i in benchmarks:
         print(i)
+    
+    summarize_benchmarks(benchmarks)
