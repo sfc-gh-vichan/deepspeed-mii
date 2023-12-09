@@ -67,19 +67,23 @@ def summarize_benchmarks(
     # Sum up total input and output tokens, divide by the time it took to complete entire benchmark (last_request_end_time - first_request_start_time)
     # avg_throughput = (avg_token_input+avg_token_output)/avg_latency
     
-    print(f"min_token_input: {min_token_input}" )
-    print(f"avg_token_input: {avg_token_input}" )
-    print(f"max_token_input: {max_token_input}" )
+    print(f"token_input: {token_input}")
+    print(f"queries_per_second: {queries_per_second}")
+    print(f"clients: {clients}")
 
-    print(f"min_token_output: {min_token_output}" )
-    print(f"avg_token_output: {avg_token_output}" )
-    print(f"max_token_output: {max_token_output}" )
+    print(f"min_token_input: {min_token_input}")
+    print(f"avg_token_input: {avg_token_input}")
+    print(f"max_token_input: {max_token_input}")
 
-    print(f"min_time_to_first_token: {min_time_to_first_token}" )
-    print(f"avg_time_to_first_token: {avg_time_to_first_token}" )
-    print(f"max_time_to_first_token: {max_time_to_first_token}" )
+    print(f"min_token_output: {min_token_output}")
+    print(f"avg_token_output: {avg_token_output}")
+    print(f"max_token_output: {max_token_output}")
 
-    print(f"min_latency: {min_latency}" )
-    print(f"avg_latency: {avg_latency}" )
-    print(f"max_latency: {max_latency}" )
+    print(f"min_time_to_first_token: {min_time_to_first_token}")
+    print(f"avg_time_to_first_token: {avg_time_to_first_token}")
+    print(f"max_time_to_first_token: {max_time_to_first_token}")
+
+    print(f"min_latency: {min_latency}")
+    print(f"avg_latency: {avg_latency}")
+    print(f"max_latency: {max_latency}")
     
