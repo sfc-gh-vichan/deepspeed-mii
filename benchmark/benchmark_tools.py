@@ -50,7 +50,7 @@ def summarize_benchmarks(
 ) -> None:
     min_token_input = min([benchmark.max_input for benchmark in benchmarks])
     avg_token_input = avg([benchmark.max_input for benchmark in benchmarks])
-    max_token_input = max([[benchmark.max_input for benchmark in benchmarks]])
+    max_token_input = max([benchmark.max_input for benchmark in benchmarks])
 
     min_token_output = min([benchmark.max_output for benchmark in benchmarks])
     avg_token_output = min([benchmark.max_output for benchmark in benchmarks])
