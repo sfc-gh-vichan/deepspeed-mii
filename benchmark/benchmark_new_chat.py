@@ -141,8 +141,8 @@ def benchmark_mii(
         max_new_tokens=max_new_tokens
     )
     end_time = time.time()
-    time_to_first_token = callback_obj.first_token_time - callback_obj.start
-    latency = end_time - callback_obj.start
+    time_to_first_token = callback_obj.first_token_time - callback_obj.start_time
+    latency = end_time - callback_obj.start_time
 
     input_lengths = []
     output_lengths = []
