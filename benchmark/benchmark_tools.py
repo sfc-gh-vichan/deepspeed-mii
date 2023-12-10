@@ -104,10 +104,10 @@ def summarize_chat_benchmarks(
 
     print('framework, qps, avg_token_input, avg_token_output, avg_time_to_first_token, avg_latency')
     print(
-        f"{framework}",
-        f"{queries_per_second: .2f}",
-        f"{avg_token_input}",
-        f"{avg_token_output}",
-        f"{avg_time_to_first_token: .3f}",
+        f"{framework},",
+        f"{queries_per_second: .2f},",
+        f"{avg_token_input},",
+        f"{avg_token_output},",
+        f"{avg_time_to_first_token: .3f},",
         f"{avg_latency: .2f}",
     )
