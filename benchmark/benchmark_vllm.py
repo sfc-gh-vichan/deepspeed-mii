@@ -6,9 +6,7 @@ import time
 from typing import List
 from transformers import AutoTokenizer
 from benchmark_tools import Benchmark, Query, summarize_chat_benchmarks
-import threading
-import nest_asyncio
-nest_asyncio.apply()
+from threading import Thread
 
 from vllm.engine.arg_utils import AsyncEngineArgs
 from vllm.engine.async_llm_engine import AsyncLLMEngine
@@ -72,7 +70,50 @@ class CallbackObject:
         self.first_token_time = 0.0
 
 
-async def run_vllm_benchmarks(
+async def stream(generator):
+    async for request_output in generator:
+        outputs = [output for output in request_output.outputs]
+        yield outputs[0]
+
+async def stream_results(outputs, benchmark_queue: queue.Queue, query: Query):
+    callback_obj = CallbackObject()
+    print("==========================================================")
+    async for result in stream(outputs):
+        if callback_obj.first:
+            callback_obj.first_token_time = time.time()
+            callback_obj.first = False
+        callback_obj.responses.append(result)
+    end_time = time.time()
+    time_to_first_token = callback_obj.first_token_time - query.start_time
+    latency = end_time - query.start_time
+
+    input_lengths = []
+    output_lengths = []
+
+    # input_lengths.append(input_len)
+    input_lengths.append(0)
+    output_lengths.append(len(callback_obj.responses[-1].token_ids))
+
+    benchmark_queue.put(
+        Benchmark(
+            framework='vllm',
+            input_length=input_lengths,
+            output_length=output_lengths,
+            time_to_first_token=time_to_first_token,
+            latency=latency,
+            tensor_parallel=8,
+        )
+    )
+
+
+def run_stream(outputs, benchmark_queue: queue.Queue, query: Query):
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    loop.run_until_complete(stream_results(outputs, benchmark_queue, query))
+    loop.close()
+
+
+def run_vllm_benchmarks(
     client_num: str,
     model: str,
     queries_per_second: float,
@@ -128,46 +169,10 @@ async def run_vllm_benchmarks(
             )
         )
 
-        async def stream(generator):
-            async for request_output in generator:
-                outputs = [output for output in request_output.outputs]
-                yield outputs[0]
-
-        async def stream_results(outputs, benchmark_queue: queue.Queue, query: Query):
-            callback_obj = CallbackObject()
-            print("==========================================================")
-            async for result in stream(outputs):
-                if callback_obj.first:
-                    callback_obj.first_token_time = time.time()
-                    callback_obj.first = False
-                callback_obj.responses.append(result)
-            end_time = time.time()
-            time_to_first_token = callback_obj.first_token_time - query.start_time
-            latency = end_time - query.start_time
-
-            input_lengths = []
-            output_lengths = []
-
-            # input_lengths.append(input_len)
-            input_lengths.append(0)
-            output_lengths.append(len(callback_obj.responses[-1].token_ids))
-
-            benchmark_queue.put(
-                Benchmark(
-                    framework='vllm',
-                    input_length=input_lengths,
-                    output_length=output_lengths,
-                    time_to_first_token=time_to_first_token,
-                    latency=latency,
-                    tensor_parallel=8,
-                )
-            )
-
         # For 30 seconds, send a query every 1/qps
-        tasks = []
+        threads = []
         benchmark_queue = queue.Queue()
         i = 0
-        loop = asyncio.get_event_loop()
         time_start = time.time()
         while time.time() - time_start < 30:
             if i >= len(prompts):
@@ -175,10 +180,13 @@ async def run_vllm_benchmarks(
             query = Query(prompts[i])
             print(f"generating query {i}")
             outputs = client.generate(prompt=query.prompt, sampling_params=sampling_params, request_id=str(i))
-            tasks = loop.create_task(stream_results(outputs, benchmark_queue, query))
+            thread = Thread(target=run_stream, args=[outputs, benchmark_queue, query])
+            thread.start()
+            threads.append(thread)
             i += 1
             time.sleep(1/queries_per_second)
-        await asyncio.gather(*tasks)
+        for thread in threads:
+            thread.join()
         return list(benchmark_queue.queue)
     except Exception as e:
         print(f"error: {repr(e)}")
