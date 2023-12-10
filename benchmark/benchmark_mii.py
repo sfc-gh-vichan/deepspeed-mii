@@ -237,7 +237,7 @@ def run_mii_benchmarks(
                 i = 0
                 total_queries_sent = 0
                 time_start = time.time()
-                while time.time() - time_start < 300:
+                while time.time() - time_start < 180:
                     if i >= len(prompts):
                         i = 0
                     query_queue.put(Query(prompts[i]))
@@ -251,8 +251,8 @@ def run_mii_benchmarks(
                     benchmarks.append(res)
 
                 summarize_chat_benchmarks(
-                    token_input=args.prompt_length,
-                    queries_per_second=args.queries_per_second,
+                    token_input=prompt_length,
+                    queries_per_second=queries_per_second,
                     clients=args.client_num,
                     benchmarks=sorted(benchmarks),
                 )
