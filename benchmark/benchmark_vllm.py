@@ -138,7 +138,6 @@ def benchmark_vllm(
     
 
 def _run_vllm_parallel(
-    client,
     barrier,
     query_queue,
     result_queue,
@@ -180,7 +179,7 @@ def _run_vllm_parallel(
 
 
 def run_vllm_benchmarks(
-    client_num: str,
+    client_num: int,
     use_thread: bool,
     model: str,
     queries_per_second: float,
