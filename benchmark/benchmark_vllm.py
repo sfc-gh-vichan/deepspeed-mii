@@ -244,10 +244,10 @@ def run_vllm_benchmarks(
             )
         )
 
-        # For 30 seconds, send a query every 1/qps
+        # For 5 minutes, send a query every 1/qps
         i = 0
         time_start = time.time()
-        while time.time() - time_start < 30:
+        while time.time() - time_start < 300:
             if i >= len(prompts):
                 i = 0
             query_queue.put(Query(prompts[i]))
