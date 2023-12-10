@@ -12,6 +12,7 @@ from transformers import AutoTokenizer
 from benchmark_tools import Benchmark, Query, summarize_chat_benchmarks
 import threading
 import multiprocessing
+from common_arg_types import list_of_floats, list_of_ints
 
 from vllm.engine.arg_utils import AsyncEngineArgs
 from vllm.engine.async_llm_engine import AsyncLLMEngine
@@ -37,8 +38,8 @@ def parse_args():
     parser.add_argument("-l",
                         "--prompt_length",
                         help="average number of tokens each prompt.",
-                        type=int,
-                        default=1024)
+                        type=list_of_ints,
+                        default="512,1024,1536,2048,2560")
     parser.add_argument("-tp",
                         "--tensor_parallel",
                         type=int,
@@ -56,9 +57,9 @@ def parse_args():
                         default=False)
     parser.add_argument("-qps",
                         "--queries_per_second",
-                        type=float,
+                        type=list_of_floats,
                         help="List of queries per second",
-                        default=0.5)
+                        default="0.5,1.0,1.5,2.0")
     parser.add_argument('--model', type=str, required=True, help="path to the model")
 
     args, _ = parser.parse_known_args()
@@ -164,7 +165,6 @@ def _run_vllm_parallel(
     while True:
         try:
             query = query_queue.get(timeout=30)
-            print(f"queue size: {query_queue.qsize()} ({pid})", flush=True)
             if len(query.prompt) == 0:
                 break
             benchmarks = benchmark_vllm(model=model, prompts=[query.prompt], max_new_tokens=max_new_tokens, query=query)
@@ -179,8 +179,8 @@ def run_vllm_benchmarks(
     client_num: int,
     use_thread: bool,
     model: str,
-    queries_per_second: float,
-    prompt_length: int,
+    queries_per_second_list: List[float],
+    prompt_length_list: List[int],
     max_new_tokens: int,
     warmup: int,
 ) -> List[Benchmark]:
@@ -215,8 +215,8 @@ def run_vllm_benchmarks(
         # Generate warmup prompts. This will generate n * len(prompt_lengths) warmup queries
         prompts = (
             prompt_generator.generate(
-                average_token=prompt_length,
-                variance=prompt_length*0.3,
+                average_token=2560,
+                variance=2560*0.3,
                 max_token=MAX_SEQUENCE_LENGTH-max_new_tokens,
                 n=warmup,
                 show_progress=True,
@@ -231,36 +231,47 @@ def run_vllm_benchmarks(
 
         time.sleep(5)
 
-        total_queries_sent = 0
+        for prompt_length in prompt_length_list:
+            for queries_per_second in queries_per_second_list:
+                print(f"benchmarking {prompt_length} prompt length at {queries_per_second} qps")
+                # Generate prompts to run benchmark on
+                prompts = (
+                    prompt_generator.generate(
+                        average_token=prompt_length,
+                        variance=prompt_length*0.3,
+                        max_token=MAX_SEQUENCE_LENGTH-max_new_tokens,
+                        n=100,
+                        show_progress=True,
+                    )
+                )
 
-        # Generate prompts to run benchmark on
-        prompts = (
-            prompt_generator.generate(
-                average_token=prompt_length,
-                variance=prompt_length*0.3,
-                max_token=MAX_SEQUENCE_LENGTH-max_new_tokens,
-                n=100,
-                show_progress=True,
-            )
-        )
-
-        # For 5 minutes, send a query every 1/qps
-        i = 0
-        time_start = time.time()
-        while time.time() - time_start < 300:
-            if i >= len(prompts):
+                # For 5 minutes, send a query every 1/qps
                 i = 0
-            query_queue.put(Query(prompts[i]))
-            i += 1
-            total_queries_sent += 1
-            time.sleep(1/queries_per_second)
+                total_queries_sent = 0
+                time_start = time.time()
+                while time.time() - time_start < 180:
+                    if i >= len(prompts):
+                        i = 0
+                    query_queue.put(Query(prompts[i]))
+                    i += 1
+                    total_queries_sent += 1
+                    time.sleep(1/queries_per_second)
 
-        response_details = []
-        while len(response_details) < total_queries_sent:
-            res = result_queue.get(block=True)
-            response_details.append(res)
+                benchmarks = []
+                while len(benchmarks) < total_queries_sent:
+                    res = result_queue.get(block=True)
+                    benchmarks.append(res)
 
-        return response_details
+                summarize_chat_benchmarks(
+                    token_input=prompt_length,
+                    queries_per_second=queries_per_second,
+                    clients=args.client_num,
+                    benchmarks=sorted(benchmarks),
+                )
+        
+        for _ in client_num:
+            query_queue.put(Query(("", 0)))
+
     except Exception as e:
         print(f"error: {repr(e)}")
 
@@ -276,15 +287,8 @@ if __name__ ==  "__main__":
         client_num=args.client_num,
         use_thread=args.use_thread,
         model=args.model,
-        queries_per_second=args.queries_per_second,
-        prompt_length=args.prompt_length,
+        queries_per_second_list=args.queries_per_second,
+        prompt_length_list=args.prompt_length,
         max_new_tokens=args.max_new_tokens,
         warmup=args.warmup,
-    )
-
-    summarize_chat_benchmarks(
-        token_input=args.prompt_length,
-        queries_per_second=args.queries_per_second,
-        clients=args.client_num,
-        benchmarks=sorted(benchmarks),
     )
