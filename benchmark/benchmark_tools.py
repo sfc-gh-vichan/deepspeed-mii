@@ -100,4 +100,12 @@ def summarize_chat_benchmarks(
     print(f"min_latency: {min_latency}")
     print(f"avg_latency: {avg_latency}")
     print(f"max_latency: {max_latency}")
-    
+
+    print('qps, avg_token_input, avg_token_output, avg_time_to_first_token, avg_latency')
+    print(
+        queries_per_second,
+        avg_token_input,
+        avg_token_output,
+        avg_time_to_first_token,
+        avg_latency,
+    )
