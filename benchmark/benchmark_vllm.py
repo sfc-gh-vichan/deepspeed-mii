@@ -106,11 +106,7 @@ async def stream_results(outputs, benchmark_queue: queue.Queue, query: Query):
     print("done")
 
 
-def run_stream(outputs, benchmark_queue: queue.Queue, query: Query):
-    asyncio.run(stream_results(outputs, benchmark_queue, query))
-
-
-def run_vllm_benchmarks(
+async def run_vllm_benchmarks(
     client_num: str,
     model: str,
     queries_per_second: float,
@@ -151,16 +147,16 @@ def run_vllm_benchmarks(
                 show_progress=True,
             )
         )
-        threads = []
+        tasks = []
         benchmark_queue = queue.Queue()
         for i, prompt in enumerate(prompts):
             query = Query(prompts[i])
             outputs = client.generate(prompt=prompt, sampling_params=sampling_params, request_id=str(10000 + i))
-            thread = Thread(target=run_stream, args=[outputs, benchmark_queue, query])
-            thread.start()
-            threads.append(thread)
-        for thread in threads:
-            thread.join()
+            task = asyncio.ensure_future(stream_results(outputs, benchmark_queue, query))
+            tasks.append(task)
+
+        while any(not task.done() for task in tasks):
+            await asyncio.sleep(5)
 
         # Prompts for benchmarking
         # Generate prompts to run benchmark on
@@ -215,14 +211,14 @@ if __name__ ==  "__main__":
         print('{}: {}'.format(key, vars(args)[key]))
     print('========================================')
 
-    benchmarks = run_vllm_benchmarks(
+    benchmarks = asyncio.run(run_vllm_benchmarks(
         client_num=args.client_num,
         model=args.model,
         queries_per_second=args.queries_per_second,
         prompt_length=args.prompt_length,
         max_new_tokens=args.max_new_tokens,
         warmup=args.warmup,
-    )
+    ))
 
     summarize_chat_benchmarks(
         token_input=args.prompt_length,
