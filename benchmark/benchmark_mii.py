@@ -135,7 +135,6 @@ def _run_mii_parallel(
     except queue.Empty:
         pass
 
-    print(f"Worker ({pid}) finished warmup. session_id: {session_id}")
     barrier.wait()
 
     time.sleep(random.uniform(0, client_num) * 0.01)
