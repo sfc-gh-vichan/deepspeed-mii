@@ -155,6 +155,7 @@ def run_vllm_benchmarks(
             )
         )
 
+        threads = []
         benchmark_queue = queue.Queue()
         for i, prompt in enumerate(prompts):
             query = Query(prompts[i])
