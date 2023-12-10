@@ -123,7 +123,7 @@ def benchmark_vllm(
     
     time_to_first_token = token_gen_time[0]
 
-    benchmarks.append(
+    benchmarks = ([
         Benchmark(
             framework='mii',
             input_length=0,
@@ -132,7 +132,7 @@ def benchmark_vllm(
             latency=0,
             tensor_parallel=8,
         )
-    )
+    ])
 
     return benchmarks
     
