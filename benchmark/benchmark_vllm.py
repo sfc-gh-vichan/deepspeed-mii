@@ -33,7 +33,7 @@ def parse_args():
                         "--warmup",
                         type=int,
                         help="number of queries for warming up",
-                        default=3)
+                        default=128)
     parser.add_argument("-l",
                         "--prompt_length",
                         help="average number of tokens each prompt.",
@@ -48,7 +48,7 @@ def parse_args():
                         "--client_num",
                         type=int,
                         help="Number of clients",
-                        default='1')
+                        default=64)
     parser.add_argument("-t",
                         "--use_thread",
                         action="store_true",
@@ -218,7 +218,7 @@ def run_vllm_benchmarks(
                 average_token=prompt_length,
                 variance=prompt_length*0.3,
                 max_token=MAX_SEQUENCE_LENGTH-max_new_tokens,
-                n=warmup*client_num,
+                n=warmup,
                 show_progress=True,
             )
         )
