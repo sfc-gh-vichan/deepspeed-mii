@@ -126,8 +126,8 @@ def benchmark_vllm(
     benchmarks = ([
         Benchmark(
             framework='mii',
-            input_length=0,
-            output_length=0,
+            input_length=[0],
+            output_length=[0],
             time_to_first_token=time_to_first_token,
             latency=0,
             tensor_parallel=8,
