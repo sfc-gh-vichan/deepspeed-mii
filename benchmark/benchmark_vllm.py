@@ -70,14 +70,11 @@ class CallbackObject:
         self.first_token_time = 0.0
 
 
-async def stream(generator):
+async def stream_results(generator, benchmark_queue: queue.Queue, query: Query):
+    callback_obj = CallbackObject()
     async for request_output in generator:
         outputs = [output for output in request_output.outputs]
-        yield outputs[0]
-
-async def stream_results(outputs, benchmark_queue: queue.Queue, query: Query):
-    callback_obj = CallbackObject()
-    async for result in stream(outputs):
+        result = outputs[0]
         if callback_obj.first:
             callback_obj.first_token_time = time.time()
             callback_obj.first = False
@@ -151,8 +148,8 @@ async def run_vllm_benchmarks(
         benchmark_queue = queue.Queue()
         for i, prompt in enumerate(prompts):
             query = Query(prompts[i])
-            outputs = client.generate(prompt=prompt, sampling_params=sampling_params, request_id=str(10000 + i))
-            task = asyncio.ensure_future(stream_results(outputs, benchmark_queue, query))
+            generator = client.generate(prompt=prompt, sampling_params=sampling_params, request_id=str(10000 + i))
+            task = asyncio.create_task(stream_results(generator, benchmark_queue, query))
             tasks.append(task)
 
         while any(not task.done() for task in tasks):
@@ -180,8 +177,8 @@ async def run_vllm_benchmarks(
                 i = 0
             query = Query(prompts[i])
             print(f"generating query {i}")
-            outputs = client.generate(prompt=query.prompt, sampling_params=sampling_params, request_id=str(i))
-            task = asyncio.ensure_future(stream_results(outputs, benchmark_queue, query))
+            generator = client.generate(prompt=query.prompt, sampling_params=sampling_params, request_id=str(i))
+            task = asyncio.create_task(stream_results(generator, benchmark_queue, query))
             tasks.append(task)
             i += 1
             time.sleep(1/queries_per_second)
