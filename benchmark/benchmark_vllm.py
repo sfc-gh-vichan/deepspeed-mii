@@ -163,7 +163,7 @@ def _run_vllm_parallel(
         while True:
             query = query_queue.get(timeout=1)
             print(f"warmup queue size: {query_queue.qsize()} ({pid})", flush=True)
-            benchmark_vllm(model=model, prompts=[query.prompt], max_new_tokens=max_new_tokens, start_time=query.start_time)
+            benchmark_vllm(model=model, prompts=[query.prompt], max_new_tokens=max_new_tokens, query=query)
     except queue.Empty:
         pass
 
@@ -177,7 +177,7 @@ def _run_vllm_parallel(
             print(f"queue size: {query_queue.qsize()} ({pid})", flush=True)
             if len(query.prompt) == 0:
                 break
-            benchmarks = benchmark_vllm(model=model, prompts=[query.prompt], max_new_tokens=max_new_tokens, start_time=query.start_time)
+            benchmarks = benchmark_vllm(model=model, prompts=[query.prompt], max_new_tokens=max_new_tokens, query=query)
             [result_queue.put(benchmark) for benchmark in benchmarks]
         except queue.Empty:
             pass
