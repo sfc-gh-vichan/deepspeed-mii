@@ -258,6 +258,7 @@ def run_vllm_benchmarks(
                     benchmarks.append(res)
 
                 summarize_chat_benchmarks(
+                    framework="vllm",
                     token_input=prompt_length,
                     queries_per_second=queries_per_second,
                     clients=args.client_num,
