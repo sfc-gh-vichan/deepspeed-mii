@@ -1,11 +1,13 @@
 import argparse
 import asyncio
 import gc
+import json
 import os
 import queue
 import random
 import time
-from typing import List
+from typing import Iterable, List
+import requests
 from transformers import AutoTokenizer
 from benchmark_tools import Benchmark, Query, summarize_chat_benchmarks
 import threading
@@ -73,48 +75,66 @@ class CallbackObject:
         self.first_token_time = 0.0
 
 
-async def benchmark_vllm(
-    client,
+def benchmark_vllm(
     prompts: List[str],
     max_new_tokens: int,
     start_time: float,
 ) -> List[Benchmark]:
-    callback_obj = CallbackObject()
-    sampling_params = SamplingParams(
-        temperature=0,  # get rid of nondeterminism.
-        top_p=1.0,
-        top_k=-1,
-        max_tokens=max_new_tokens
-    )
-    generator = client.generate(prompt=prompts[0], sampling_params=sampling_params, request_id=str(start_time))
-    async for request_output in generator:
-        outputs = [output for output in request_output.outputs]
-        result = outputs[0]
-        if callback_obj.first:
-            callback_obj.first_token_time = time.time()
-            callback_obj.first = False
-        callback_obj.responses.append(result)
-    end_time = time.time()
-    time_to_first_token = callback_obj.first_token_time - start_time
-    latency = end_time - start_time
+    api_url = "http://localhost:8000/generate"
+    headers = {"User-Agent": "Benchmark Client"}
+    pload = {
+        "prompt": prompts[0],
+        "n": 1,
+        "use_beam_search": False,
+        "temperature": 0,
+        "top_p": 0.9,
+        "top_k": 1,
+        "max_tokens": max_new_tokens,
+        "ignore_eos": False,
+        "stream": True,
+    }
+    def clear_line(n: int = 1) -> None:
+        LINE_UP = '\033[1A'
+        LINE_CLEAR = '\x1b[2K'
+        for _ in range(n):
+            print(LINE_UP, end=LINE_CLEAR, flush=True)
 
-    input_lengths = []
-    output_lengths = []
+    def get_streaming_response(response: requests.Response, time_last_token) -> Iterable[List[str]]:
+        for chunk in response.iter_lines(chunk_size=8192, decode_unicode=False,
+                                        delimiter=b"\0"):
+            if chunk:
+                data = json.loads(chunk.decode("utf-8"))
+                output = data["text"][0]
+                time_now = time.time()
+                yield output, time_now - time_last_token
+                time_last_token = time_now
 
-    # input_lengths.append(input_len)
-    input_lengths.append(0)
-    output_lengths.append(len(callback_obj.responses[-1].token_ids))
+    def get_response(response: requests.Response) -> List[str]:
+        data = json.loads(response.content)
+        output = data["text"]
+        return output
 
-    return ([
+    start_time = time.time()
+    response = requests.post(api_url, headers=headers, json=pload, stream=True)
+    token_gen_time = []
+    for h, t in get_streaming_response(response, start_time):
+        output = h
+        token_gen_time.append(t)
+    
+    time_to_first_token = token_gen_time[0]
+
+    benchmarks.append(
         Benchmark(
-            framework='vllm',
-            input_length=input_lengths,
-            output_length=output_lengths,
+            framework='mii',
+            input_length=0,
+            output_length=0,
             time_to_first_token=time_to_first_token,
-            latency=latency,
+            latency=0,
             tensor_parallel=8,
         )
-    ])
+    )
+
+    return benchmarks
     
 
 def _run_vllm_parallel(
@@ -136,8 +156,8 @@ def _run_vllm_parallel(
     try:
         while True:
             query = query_queue.get(timeout=1)
-            print(f"warmup queue size: {query_queue.qsize()})", flush=True)
-            event_loop.run_until_complete(benchmark_vllm(client=client, prompts=[query.prompt], max_new_tokens=max_new_tokens, start_time=query.start_time))
+            print(f"warmup queue size: {query_queue.qsize()} ({pid})", flush=True)
+            benchmark_vllm(client=client, prompts=[query.prompt], max_new_tokens=max_new_tokens, start_time=query.start_time)
     except queue.Empty:
         pass
 
@@ -148,10 +168,10 @@ def _run_vllm_parallel(
     while True:
         try:
             query = query_queue.get(timeout=30)
-            print(f"queue size: {query_queue.qsize()})", flush=True)
+            print(f"warmup queue size: {query_queue.qsize()} ({pid})", flush=True)
             if len(query.prompt) == 0:
                 break
-            benchmarks = event_loop.run_until_complete(benchmark_vllm(client=client, prompts=[query.prompt], max_new_tokens=max_new_tokens, start_time=query.start_time))
+            benchmarks = benchmark_vllm(client=client, prompts=[query.prompt], max_new_tokens=max_new_tokens, start_time=query.start_time)
             [result_queue.put(benchmark) for benchmark in benchmarks]
         except queue.Empty:
             pass
@@ -170,17 +190,6 @@ def run_vllm_benchmarks(
 ) -> List[Benchmark]:
     client = None
     try:
-        # Start vllm server
-        parser = argparse.ArgumentParser()
-        parser.add_argument("--host", type=str, default="0.0.0.0")
-        parser.add_argument("--port", type=int, default=8000)
-        parser = AsyncEngineArgs.add_cli_args(parser)
-        args, _ = parser.parse_known_args()
-        engine_args = AsyncEngineArgs.from_cli_args(args)
-        start = time.time()
-        client = AsyncLLMEngine.from_engine_args(engine_args)
-        print('took ' + "{:.2f}".format(time.time()-start) + " seconds to start vllm engine")
-
         # Start threads/processes for # of clients
         if use_thread:
             runnable_cls = threading.Thread
