@@ -77,7 +77,6 @@ async def stream(generator):
 
 async def stream_results(outputs, benchmark_queue: queue.Queue, query: Query):
     callback_obj = CallbackObject()
-    print("==========================================================")
     async for result in stream(outputs):
         if callback_obj.first:
             callback_obj.first_token_time = time.time()
@@ -145,7 +144,7 @@ def run_vllm_benchmarks(
         prompt_generator = PromptsGenerator(tokenizer_path=model)
 
         # Warmup
-        prompts = []
+        threads = []
         prompts = (
             prompt_generator.generate(
                 average_token=prompt_length,
@@ -155,7 +154,16 @@ def run_vllm_benchmarks(
                 show_progress=True,
             )
         )
-        [client.generate(prompt=prompt, sampling_params=sampling_params, request_id=str(10000 + i)) for i, prompt in enumerate(prompts)]
+
+        benchmark_queue = queue.Queue()
+        for i, prompt in enumerate(prompts):
+            query = Query(prompts[i])
+            outputs = client.generate(prompt=prompt, sampling_params=sampling_params, request_id=str(10000 + i))
+            thread = Thread(target=run_stream, args=[outputs, benchmark_queue, query])
+            thread.start()
+            threads.append(thread)
+        for thread in threads:
+            thread.join()
 
         # Prompts for benchmarking
         # Generate prompts to run benchmark on
