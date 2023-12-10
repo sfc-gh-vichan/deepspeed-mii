@@ -171,7 +171,7 @@ async def run_vllm_benchmarks(
         )
 
         # For 30 seconds, send a query every 1/qps
-        threads = []
+        tasks = []
         benchmark_queue = queue.Queue()
         i = 0
         time_start = time.time()
@@ -181,13 +181,12 @@ async def run_vllm_benchmarks(
             query = Query(prompts[i])
             print(f"generating query {i}")
             outputs = client.generate(prompt=query.prompt, sampling_params=sampling_params, request_id=str(i))
-            thread = Thread(target=run_stream, args=[outputs, benchmark_queue, query])
-            thread.start()
-            threads.append(thread)
+            task = asyncio.ensure_future(stream_results(outputs, benchmark_queue, query))
+            tasks.append(task)
             i += 1
             time.sleep(1/queries_per_second)
-        for thread in threads:
-            thread.join()
+        while any(not task.done() for task in tasks):
+            await asyncio.sleep(5)
         return list(benchmark_queue.queue)
     except Exception as e:
         print(f"error: {repr(e)}")
