@@ -8,6 +8,7 @@ import threading
 import time
 from typing import List
 from benchmark_tools import Benchmark, Query, summarize_chat_benchmarks
+from common_arg_types import list_of_floats, list_of_ints
 
 import mii
 from prompt_generator import PromptsGenerator
@@ -29,8 +30,8 @@ def parse_args():
     parser.add_argument("-l",
                         "--prompt_length",
                         help="average number of tokens each prompt.",
-                        type=int,
-                        default=1024)
+                        type=list_of_ints,
+                        default="512,1024,1536,2048,2560")
     parser.add_argument("-tp",
                         "--tensor_parallel",
                         type=int,
@@ -48,9 +49,9 @@ def parse_args():
                         default=False)
     parser.add_argument("-qps",
                         "--queries_per_second",
-                        type=float,
+                        type=list_of_floats,
                         help="List of queries per second",
-                        default=0.5)
+                        default="0.5,1.0,1.5,2.0")
     parser.add_argument('--model', type=str, required=True, help="path to the model")
 
     args, _ = parser.parse_known_args()
@@ -140,7 +141,7 @@ def _run_mii_parallel(
     time.sleep(random.uniform(0, client_num) * 0.01)
     while True:
         try:
-            query = query_queue.get(timeout=30) # Get input tokens here as well?
+            query = query_queue.get(timeout=300)
             print(f"queue size: {query_queue.qsize()} ({pid})", flush=True)
             if len(query.prompt) == 0:
                 break
@@ -157,11 +158,11 @@ def run_mii_benchmarks(
     use_thread: bool,
     model: str,
     tensor_parallel: int,
-    queries_per_second: float,
-    prompt_length: int,
+    queries_per_second_list: List[float],
+    prompt_length_list: List[int],
     max_new_tokens: int,
     warmup: int,
-) -> List[Benchmark]:
+) -> None:
     try:
         # Start mii server
         start = time.time()
@@ -200,11 +201,11 @@ def run_mii_benchmarks(
         
         prompt_generator = PromptsGenerator(tokenizer_path=model)
 
-        # Generate warmup prompts. This will generate n * len(prompt_lengths) warmup queries
+        # Generate warmup prompts.
         prompts = (
             prompt_generator.generate(
-                average_token=prompt_length,
-                variance=prompt_length*0.3,
+                average_token=2560,
+                variance=2560*0.3,
                 max_token=MAX_SEQUENCE_LENGTH-max_new_tokens,
                 n=warmup,
                 show_progress=True,
@@ -219,36 +220,46 @@ def run_mii_benchmarks(
 
         time.sleep(5)
 
-        total_queries_sent = 0
+        for prompt_length in prompt_length_list:
+            for queries_per_second in queries_per_second_list:
+                # Generate prompts to run benchmark on
+                prompts = (
+                    prompt_generator.generate(
+                        average_token=prompt_length,
+                        variance=prompt_length*0.3,
+                        max_token=MAX_SEQUENCE_LENGTH-max_new_tokens,
+                        n=100,
+                        show_progress=True,
+                    )
+                )
 
-        # Generate prompts to run benchmark on
-        prompts = (
-            prompt_generator.generate(
-                average_token=prompt_length,
-                variance=prompt_length*0.3,
-                max_token=MAX_SEQUENCE_LENGTH-max_new_tokens,
-                n=100,
-                show_progress=True,
-            )
-        )
-
-        # For 5 minutes, send a query every 1/qps
-        i = 0
-        time_start = time.time()
-        while time.time() - time_start < 300:
-            if i >= len(prompts):
+                # For 5 minutes, send a query every 1/qps
                 i = 0
-            query_queue.put(Query(prompts[i]))
-            i += 1
-            total_queries_sent += 1
-            time.sleep(1/queries_per_second)
+                total_queries_sent = 0
+                time_start = time.time()
+                while time.time() - time_start < 300:
+                    if i >= len(prompts):
+                        i = 0
+                    query_queue.put(Query(prompts[i]))
+                    i += 1
+                    total_queries_sent += 1
+                    time.sleep(1/queries_per_second)
 
-        response_details = []
-        while len(response_details) < total_queries_sent:
-            res = result_queue.get(block=True)
-            response_details.append(res)
+                benchmarks = []
+                while len(benchmarks) < total_queries_sent:
+                    res = result_queue.get(block=True)
+                    benchmarks.append(res)
 
-        return response_details
+                summarize_chat_benchmarks(
+                    token_input=args.prompt_length,
+                    queries_per_second=args.queries_per_second,
+                    clients=args.client_num,
+                    benchmarks=sorted(benchmarks),
+                )
+        
+        for _ in client_num:
+            query_queue.put(Query(("", 0)))
+
     except Exception as e:
         print(f"error: {repr(e)}")
     finally:
@@ -271,15 +282,8 @@ if __name__ ==  "__main__":
         use_thread=args.use_thread,
         model=args.model,
         tensor_parallel=args.tensor_parallel,
-        queries_per_second=args.queries_per_second,
-        prompt_length=args.prompt_length,
+        queries_per_second_list=args.queries_per_second,
+        prompt_length_list=args.prompt_length,
         max_new_tokens=args.max_new_tokens,
         warmup=args.warmup,
-    )
-    
-    summarize_chat_benchmarks(
-        token_input=args.prompt_length,
-        queries_per_second=args.queries_per_second,
-        clients=args.client_num,
-        benchmarks=sorted(benchmarks),
     )
