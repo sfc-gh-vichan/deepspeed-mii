@@ -76,11 +76,11 @@ def summarize_chat_benchmarks(
     avg_latency = avg_float([benchmark.latency for benchmark in benchmarks])
     max_latency = max([benchmark.latency for benchmark in benchmarks])
 
-    print('!!!---Printing results---!!!')
-    # Output results as a csv
-    print('framework, input, output, time_to_first_token, latency(s), throughput, tensor_parallel')
-    for i in benchmarks:
-        print(i)
+    # print('!!!---Printing results---!!!')
+    # # Output results as a csv
+    # print('framework, input, output, time_to_first_token, latency(s), throughput, tensor_parallel')
+    # for i in benchmarks:
+    #     print(i)
     
     print(f"token_input: {token_input}")
     print(f"queries_per_second: {queries_per_second}")
