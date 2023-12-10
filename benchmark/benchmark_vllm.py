@@ -92,11 +92,6 @@ def benchmark_vllm(
         "ignore_eos": False,
         "stream": True,
     }
-    def clear_line(n: int = 1) -> None:
-        LINE_UP = '\033[1A'
-        LINE_CLEAR = '\x1b[2K'
-        for _ in range(n):
-            print(LINE_UP, end=LINE_CLEAR, flush=True)
 
     def get_streaming_response(response: requests.Response, time_last_token) -> Iterable[List[str]]:
         for chunk in response.iter_lines(chunk_size=8192, decode_unicode=False,
@@ -107,11 +102,6 @@ def benchmark_vllm(
                 time_now = time.time()
                 yield output, time_now - time_last_token
                 time_last_token = time_now
-
-    def get_response(response: requests.Response) -> List[str]:
-        data = json.loads(response.content)
-        output = data["text"]
-        return output
 
     response = requests.post(api_url, headers=headers, json=pload, stream=True)
     token_gen_time = []
@@ -131,7 +121,7 @@ def benchmark_vllm(
 
     benchmarks = ([
         Benchmark(
-            framework='mii',
+            framework='vllm',
             input_length=input_length,
             output_length=output_length,
             time_to_first_token=time_to_first_token,
