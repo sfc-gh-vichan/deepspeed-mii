@@ -14,11 +14,6 @@ import threading
 import multiprocessing
 from common_arg_types import list_of_floats, list_of_ints
 
-from vllm.engine.arg_utils import AsyncEngineArgs
-from vllm.engine.async_llm_engine import AsyncLLMEngine
-from vllm.sampling_params import SamplingParams
-from vllm.model_executor.parallel_utils.parallel_state import destroy_model_parallel
-
 from prompt_generator import PromptsGenerator
 
 MAX_SEQUENCE_LENGTH = 4096
