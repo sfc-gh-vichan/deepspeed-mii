@@ -157,7 +157,7 @@ def _run_vllm_parallel(
         while True:
             query = query_queue.get(timeout=1)
             print(f"warmup queue size: {query_queue.qsize()} ({pid})", flush=True)
-            benchmark_vllm(client=client, prompts=[query.prompt], max_new_tokens=max_new_tokens, start_time=query.start_time)
+            benchmark_vllm(prompts=[query.prompt], max_new_tokens=max_new_tokens, start_time=query.start_time)
     except queue.Empty:
         pass
 
@@ -171,7 +171,7 @@ def _run_vllm_parallel(
             print(f"warmup queue size: {query_queue.qsize()} ({pid})", flush=True)
             if len(query.prompt) == 0:
                 break
-            benchmarks = benchmark_vllm(client=client, prompts=[query.prompt], max_new_tokens=max_new_tokens, start_time=query.start_time)
+            benchmarks = benchmark_vllm(prompts=[query.prompt], max_new_tokens=max_new_tokens, start_time=query.start_time)
             [result_queue.put(benchmark) for benchmark in benchmarks]
         except queue.Empty:
             pass
@@ -188,7 +188,6 @@ def run_vllm_benchmarks(
     max_new_tokens: int,
     warmup: int,
 ) -> List[Benchmark]:
-    client = None
     try:
         # Start threads/processes for # of clients
         if use_thread:
@@ -209,7 +208,7 @@ def run_vllm_benchmarks(
             processes.append(
                 runnable_cls(
                     target=_run_vllm_parallel,
-                    args=(client, barrier, query_queue, result_queue, max_new_tokens, client_num)
+                    args=(barrier, query_queue, result_queue, max_new_tokens, client_num)
                 )
             )
         for p in processes:
@@ -268,17 +267,6 @@ def run_vllm_benchmarks(
         return response_details
     except Exception as e:
         print(f"error: {repr(e)}")
-    finally:
-        try:
-            # Destroy
-            if client is not None:
-                destroy_model_parallel()
-                del client
-                gc.collect()
-                torch.cuda.empty_cache()
-                torch.distributed.destroy_process_group()
-        except Exception as e:
-            print(f'failed to destroy vllm: {e}')
 
 
 if __name__ ==  "__main__":
