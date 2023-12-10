@@ -1,12 +1,15 @@
 import argparse
 import asyncio
 import gc
+import os
 import queue
+import random
 import time
 from typing import List
 from transformers import AutoTokenizer
 from benchmark_tools import Benchmark, Query, summarize_chat_benchmarks
-from threading import Thread
+import threading
+import multiprocessing
 
 from vllm.engine.arg_utils import AsyncEngineArgs
 from vllm.engine.async_llm_engine import AsyncLLMEngine
@@ -70,8 +73,20 @@ class CallbackObject:
         self.first_token_time = 0.0
 
 
-async def stream_results(generator, benchmark_queue: queue.Queue, query: Query):
+async def benchmark_vllm(
+    client,
+    prompts: List[str],
+    max_new_tokens: int,
+    start_time: float,
+) -> List[Benchmark]:
     callback_obj = CallbackObject()
+    sampling_params = SamplingParams(
+        temperature=0,  # get rid of nondeterminism.
+        top_p=1.0,
+        top_k=-1,
+        max_tokens=max_new_tokens
+    )
+    generator = client.generate(prompt=prompts[0], sampling_params=sampling_params, request_id=str(start_time))
     async for request_output in generator:
         outputs = [output for output in request_output.outputs]
         result = outputs[0]
@@ -80,8 +95,8 @@ async def stream_results(generator, benchmark_queue: queue.Queue, query: Query):
             callback_obj.first = False
         callback_obj.responses.append(result)
     end_time = time.time()
-    time_to_first_token = callback_obj.first_token_time - query.start_time
-    latency = end_time - query.start_time
+    time_to_first_token = callback_obj.first_token_time - start_time
+    latency = end_time - start_time
 
     input_lengths = []
     output_lengths = []
@@ -90,7 +105,7 @@ async def stream_results(generator, benchmark_queue: queue.Queue, query: Query):
     input_lengths.append(0)
     output_lengths.append(len(callback_obj.responses[-1].token_ids))
 
-    benchmark_queue.put(
+    return ([
         Benchmark(
             framework='vllm',
             input_length=input_lengths,
@@ -99,12 +114,54 @@ async def stream_results(generator, benchmark_queue: queue.Queue, query: Query):
             latency=latency,
             tensor_parallel=8,
         )
-    )
-    print("done")
+    ])
+    
+
+def _run_vllm_parallel(
+    client,
+    barrier,
+    query_queue,
+    result_queue,
+    max_new_tokens,
+    client_num,
+):
+    pid = os.getpid()
+    session_id = f"test_session_p{pid}_t{threading.get_ident()}"
+    event_loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(event_loop)
+
+    barrier.wait()
+
+    # Warmup
+    try:
+        while True:
+            query = query_queue.get(timeout=1)
+            print(f"warmup queue size: {query_queue.qsize()})", flush=True)
+            event_loop.run_until_complete(benchmark_vllm(client=client, prompts=[query.prompt], max_new_tokens=max_new_tokens, start_time=query.start_time))
+    except queue.Empty:
+        pass
+
+    print(f"Worker ({pid}) finished warmup. session_id: {session_id}")
+    barrier.wait()
+
+    time.sleep(random.uniform(0, client_num) * 0.01)
+    while True:
+        try:
+            query = query_queue.get(timeout=30)
+            print(f"queue size: {query_queue.qsize()})", flush=True)
+            if len(query.prompt) == 0:
+                break
+            benchmarks = event_loop.run_until_complete(benchmark_vllm(client=client, prompts=[query.prompt], max_new_tokens=max_new_tokens, start_time=query.start_time))
+            [result_queue.put(benchmark) for benchmark in benchmarks]
+        except queue.Empty:
+            pass
+
+    print(f"Worker ({pid}) finished. session_id: {session_id}")
 
 
-async def run_vllm_benchmarks(
+def run_vllm_benchmarks(
     client_num: str,
+    use_thread: bool,
     model: str,
     queries_per_second: float,
     prompt_length: int,
@@ -125,16 +182,34 @@ async def run_vllm_benchmarks(
         client = AsyncLLMEngine.from_engine_args(engine_args)
         print('took ' + "{:.2f}".format(time.time()-start) + " seconds to start vllm engine")
 
-        sampling_params = SamplingParams(
-            temperature=0,  # get rid of nondeterminism.
-            top_p=1.0,
-            top_k=-1,
-            max_tokens=max_new_tokens
-        )
+        # Start threads/processes for # of clients
+        if use_thread:
+            runnable_cls = threading.Thread
+            barrier_cls = threading.Barrier
+            queue_cls = queue.Queue
+        else:
+            runnable_cls = multiprocessing.Process
+            barrier_cls = multiprocessing.Barrier
+            queue_cls = multiprocessing.Queue
+        
+        barrier = barrier_cls(client_num + 1)
+        query_queue = queue_cls()
+        result_queue = queue_cls()
+
+        processes = []
+        for _ in range(client_num):
+            processes.append(
+                runnable_cls(
+                    target=_run_vllm_parallel,
+                    args=(client, barrier, query_queue, result_queue, max_new_tokens, client_num)
+                )
+            )
+        for p in processes:
+            p.start()
 
         prompt_generator = PromptsGenerator(tokenizer_path=model)
 
-        # Warmup
+        # Generate warmup prompts. This will generate n * len(prompt_lengths) warmup queries
         prompts = (
             prompt_generator.generate(
                 average_token=prompt_length,
@@ -144,18 +219,17 @@ async def run_vllm_benchmarks(
                 show_progress=True,
             )
         )
-        tasks = []
-        benchmark_queue = queue.Queue()
-        for i, prompt in enumerate(prompts):
-            query = Query(prompts[i])
-            generator = client.generate(prompt=prompt, sampling_params=sampling_params, request_id=str(10000 + i))
-            task = asyncio.create_task(stream_results(generator, benchmark_queue, query))
-            tasks.append(task)
+        [query_queue.put(Query(prompt)) for prompt in prompts]
 
-        while any(not task.done() for task in tasks):
-            await asyncio.sleep(5)
+        # Barrier to wait for all clients to initialized
+        barrier.wait()
+        # Barrier for all clients to finish warmup
+        barrier.wait()
 
-        # Prompts for benchmarking
+        time.sleep(5)
+
+        total_queries_sent = 0
+
         # Generate prompts to run benchmark on
         prompts = (
             prompt_generator.generate(
@@ -168,23 +242,22 @@ async def run_vllm_benchmarks(
         )
 
         # For 30 seconds, send a query every 1/qps
-        tasks = []
-        benchmark_queue = queue.Queue()
         i = 0
         time_start = time.time()
         while time.time() - time_start < 30:
             if i >= len(prompts):
                 i = 0
-            query = Query(prompts[i])
-            print(f"generating query {i}")
-            generator = client.generate(prompt=query.prompt, sampling_params=sampling_params, request_id=str(i))
-            task = asyncio.create_task(stream_results(generator, benchmark_queue, query))
-            tasks.append(task)
+            query_queue.put(Query(prompts[i]))
             i += 1
+            total_queries_sent += 1
             time.sleep(1/queries_per_second)
-        while any(not task.done() for task in tasks):
-            await asyncio.sleep(5)
-        return list(benchmark_queue.queue)
+
+        response_details = []
+        while len(response_details) < total_queries_sent:
+            res = result_queue.get(block=True)
+            response_details.append(res)
+
+        return response_details
     except Exception as e:
         print(f"error: {repr(e)}")
     finally:
@@ -207,14 +280,15 @@ if __name__ ==  "__main__":
         print('{}: {}'.format(key, vars(args)[key]))
     print('========================================')
 
-    benchmarks = asyncio.run(run_vllm_benchmarks(
+    benchmarks = run_vllm_benchmarks(
         client_num=args.client_num,
+        use_thread=args.use_thread,
         model=args.model,
         queries_per_second=args.queries_per_second,
         prompt_length=args.prompt_length,
         max_new_tokens=args.max_new_tokens,
         warmup=args.warmup,
-    ))
+    )
 
     summarize_chat_benchmarks(
         token_input=args.prompt_length,
