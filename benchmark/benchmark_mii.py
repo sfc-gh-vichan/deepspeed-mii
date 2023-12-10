@@ -257,7 +257,7 @@ def run_mii_benchmarks(
                     benchmarks=sorted(benchmarks),
                 ))
         
-        for _ in client_num:
+        for _ in range(client_num):
             query_queue.put(Query(("", 0)))
         
         for summarization_result in summarization_results:
