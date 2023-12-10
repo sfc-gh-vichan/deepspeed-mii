@@ -215,14 +215,14 @@ if __name__ ==  "__main__":
         print('{}: {}'.format(key, vars(args)[key]))
     print('========================================')
 
-    benchmarks = asyncio.run(run_vllm_benchmarks(
+    benchmarks = run_vllm_benchmarks(
         client_num=args.client_num,
         model=args.model,
         queries_per_second=args.queries_per_second,
         prompt_length=args.prompt_length,
         max_new_tokens=args.max_new_tokens,
         warmup=args.warmup,
-    ))
+    )
 
     summarize_chat_benchmarks(
         token_input=args.prompt_length,
