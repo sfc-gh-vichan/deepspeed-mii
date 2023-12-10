@@ -4,7 +4,8 @@ import time
 
 class Query:
     def __init__(self, prompt):
-        self.prompt = prompt
+        self.prompt = prompt[0]
+        self.input_tokens = prompt[1]
         self.start_time = time.time()
 
 

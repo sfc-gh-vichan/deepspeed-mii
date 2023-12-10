@@ -18,8 +18,6 @@ from vllm.engine.async_llm_engine import AsyncLLMEngine
 from vllm.sampling_params import SamplingParams
 from vllm.model_executor.parallel_utils.parallel_state import destroy_model_parallel
 
-import torch
-
 from prompt_generator import PromptsGenerator
 
 MAX_SEQUENCE_LENGTH = 4096
@@ -76,9 +74,10 @@ class CallbackObject:
 
 
 def benchmark_vllm(
+    model: str,
     prompts: List[str],
     max_new_tokens: int,
-    start_time: float,
+    query: Query,
 ) -> List[Benchmark]:
     api_url = "http://localhost:8000/generate"
     headers = {"User-Agent": "Benchmark Client"}
@@ -114,22 +113,29 @@ def benchmark_vllm(
         output = data["text"]
         return output
 
-    start_time = time.time()
     response = requests.post(api_url, headers=headers, json=pload, stream=True)
     token_gen_time = []
-    for h, t in get_streaming_response(response, start_time):
-        output = h
+    last_response = ""
+    for h, t in get_streaming_response(response, query.start_time):
+        last_response = h
         token_gen_time.append(t)
-    
+
     time_to_first_token = token_gen_time[0]
+    latency = time.time() - query.start_time
+
+    tokenizer = AutoTokenizer.from_pretrained(model)
+    output_token_ids = tokenizer.encode(last_response)
+
+    input_length = [query.input_tokens]
+    output_length = [len(output_token_ids) - query.input_tokens]
 
     benchmarks = ([
         Benchmark(
             framework='mii',
-            input_length=[1],
-            output_length=[1],
+            input_length=input_length,
+            output_length=output_length,
             time_to_first_token=time_to_first_token,
-            latency=1,
+            latency=latency,
             tensor_parallel=8,
         )
     ])
@@ -138,6 +144,7 @@ def benchmark_vllm(
     
 
 def _run_vllm_parallel(
+    model,
     barrier,
     query_queue,
     result_queue,
@@ -156,7 +163,7 @@ def _run_vllm_parallel(
         while True:
             query = query_queue.get(timeout=1)
             print(f"warmup queue size: {query_queue.qsize()} ({pid})", flush=True)
-            benchmark_vllm(prompts=[query.prompt], max_new_tokens=max_new_tokens, start_time=query.start_time)
+            benchmark_vllm(model=model, prompts=[query.prompt], max_new_tokens=max_new_tokens, start_time=query.start_time)
     except queue.Empty:
         pass
 
@@ -167,10 +174,10 @@ def _run_vllm_parallel(
     while True:
         try:
             query = query_queue.get(timeout=30)
-            print(f"warmup queue size: {query_queue.qsize()} ({pid})", flush=True)
+            print(f"queue size: {query_queue.qsize()} ({pid})", flush=True)
             if len(query.prompt) == 0:
                 break
-            benchmarks = benchmark_vllm(prompts=[query.prompt], max_new_tokens=max_new_tokens, start_time=query.start_time)
+            benchmarks = benchmark_vllm(model=model, prompts=[query.prompt], max_new_tokens=max_new_tokens, start_time=query.start_time)
             [result_queue.put(benchmark) for benchmark in benchmarks]
         except queue.Empty:
             pass
@@ -207,7 +214,7 @@ def run_vllm_benchmarks(
             processes.append(
                 runnable_cls(
                     target=_run_vllm_parallel,
-                    args=(barrier, query_queue, result_queue, max_new_tokens, client_num)
+                    args=(model, barrier, query_queue, result_queue, max_new_tokens, client_num)
                 )
             )
         for p in processes:
