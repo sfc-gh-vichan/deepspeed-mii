@@ -221,6 +221,7 @@ def run_mii_benchmarks(
 
         for prompt_length in prompt_length_list:
             for queries_per_second in queries_per_second_list:
+                print(f"benchmarking {prompt_length} prompt length at {queries_per_second} qps")
                 # Generate prompts to run benchmark on
                 prompts = (
                     prompt_generator.generate(
