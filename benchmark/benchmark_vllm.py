@@ -264,7 +264,7 @@ def run_vllm_benchmarks(
                     clients=args.client_num,
                     benchmarks=sorted(benchmarks),
                 )
-        
+
         for _ in range(client_num):
             query_queue.put(Query(("", 0)))
 
