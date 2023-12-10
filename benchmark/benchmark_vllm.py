@@ -144,7 +144,6 @@ def run_vllm_benchmarks(
         prompt_generator = PromptsGenerator(tokenizer_path=model)
 
         # Warmup
-        threads = []
         prompts = (
             prompt_generator.generate(
                 average_token=prompt_length,
@@ -154,7 +153,6 @@ def run_vllm_benchmarks(
                 show_progress=True,
             )
         )
-
         threads = []
         benchmark_queue = queue.Queue()
         for i, prompt in enumerate(prompts):
