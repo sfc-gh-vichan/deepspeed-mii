@@ -142,7 +142,6 @@ def _run_mii_parallel(
     while True:
         try:
             query = query_queue.get(timeout=300)
-            print(f"queue size: {query_queue.qsize()} ({pid})", flush=True)
             if len(query.prompt) == 0:
                 break
             benchmarks = benchmark_mii(client=client, prompts=[query.prompt], max_new_tokens=max_new_tokens, start_time=query.start_time)
