@@ -237,7 +237,7 @@ def run_mii_benchmarks(
                 i = 0
                 total_queries_sent = 0
                 time_start = time.time()
-                while time.time() - time_start < 180:
+                while time.time() - time_start < 300:
                     if i >= len(prompts):
                         i = 0
                     query_queue.put(Query(prompts[i]))
