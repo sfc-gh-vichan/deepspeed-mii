@@ -103,6 +103,7 @@ async def stream_results(outputs, benchmark_queue: queue.Queue, query: Query):
             tensor_parallel=8,
         )
     )
+    print("done")
 
 
 def run_stream(outputs, benchmark_queue: queue.Queue, query: Query):
