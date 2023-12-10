@@ -59,7 +59,7 @@ def summarize_chat_benchmarks(
     queries_per_second: int,
     clients: int,
     benchmarks: List[Benchmark],
-) -> None:
+) -> str:
     min_token_input = min([benchmark.max_input for benchmark in benchmarks])
     avg_token_input = avg_int([benchmark.max_input for benchmark in benchmarks])
     max_token_input = max([benchmark.max_input for benchmark in benchmarks])
@@ -102,8 +102,7 @@ def summarize_chat_benchmarks(
     print(f"avg_latency: {avg_latency}")
     print(f"max_latency: {max_latency}")
 
-    print('framework, qps, avg_token_input, avg_token_output, avg_time_to_first_token, avg_latency')
-    print(
+    summarization_results = (
         f"{framework},",
         f"{queries_per_second: .2f},",
         f"{avg_token_input},",
@@ -111,3 +110,6 @@ def summarize_chat_benchmarks(
         f"{avg_time_to_first_token: .3f},",
         f"{avg_latency: .2f}",
     )
+    print('framework, qps, avg_token_input, avg_token_output, avg_time_to_first_token, avg_latency',)
+    print(summarization_results)
+    return summarization_results

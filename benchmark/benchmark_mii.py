@@ -149,8 +149,6 @@ def _run_mii_parallel(
         except queue.Empty:
             pass
 
-    print(f"Worker ({pid}) finished. session_id: {session_id}")
-
 
 def run_mii_benchmarks(
     client_num: int,
@@ -219,6 +217,7 @@ def run_mii_benchmarks(
 
         time.sleep(5)
 
+        summarization_results = []
         for prompt_length in prompt_length_list:
             for queries_per_second in queries_per_second_list:
                 print(f"benchmarking {prompt_length} prompt length at {queries_per_second} qps")
@@ -250,16 +249,19 @@ def run_mii_benchmarks(
                     res = result_queue.get(block=True)
                     benchmarks.append(res)
 
-                summarize_chat_benchmarks(
+                summarization_results.append(summarize_chat_benchmarks(
                     framework="mii",
                     token_input=prompt_length,
                     queries_per_second=queries_per_second,
                     clients=args.client_num,
                     benchmarks=sorted(benchmarks),
-                )
+                ))
         
         for _ in client_num:
             query_queue.put(Query(("", 0)))
+        
+        for summarization_result in summarization_results:
+            print(summarization_result)
 
     except Exception as e:
         print(f"error: {repr(e)}")
