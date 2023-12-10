@@ -110,8 +110,8 @@ def run_stream(outputs, benchmark_queue: queue.Queue, query: Query):
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     print("starting run")
-    asyncio.ensure_future(loop.create_task(stream_results(outputs, benchmark_queue, query)))
-    print("run ended")
+    pending = [loop.create_task(stream_results(outputs, benchmark_queue, query))]
+    asyncio.gather(*pending)
 
 
 def run_vllm_benchmarks(
