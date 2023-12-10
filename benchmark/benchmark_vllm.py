@@ -168,7 +168,6 @@ def run_vllm_benchmarks(
     max_new_tokens: int,
     warmup: int,
 ) -> List[Benchmark]:
-    benchmarks: List[Benchmark] = []
     client = None
     try:
         # Start vllm server
