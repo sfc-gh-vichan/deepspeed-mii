@@ -129,7 +129,7 @@ def benchmark_vllm(
             input_length=[1],
             output_length=[1],
             time_to_first_token=time_to_first_token,
-            latency=0,
+            latency=1,
             tensor_parallel=8,
         )
     ])
