@@ -166,8 +166,6 @@ def _run_vllm_parallel(
         except queue.Empty:
             pass
 
-    print(f"Worker ({pid}) finished. session_id: {session_id}")
-
 
 def run_vllm_benchmarks(
     client_num: int,
