@@ -263,7 +263,7 @@ def run_mii_benchmarks(
             print(summarization_result)
 
     except Exception as e:
-        print(f"error: {repr(e)}")
+        raise e
     finally:
         try:
             # Destroy

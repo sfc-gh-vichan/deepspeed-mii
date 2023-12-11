@@ -272,7 +272,7 @@ def run_vllm_benchmarks(
             print(summarization_result)
 
     except Exception as e:
-        print(f"error: {repr(e)}")
+        raise e
 
 
 if __name__ ==  "__main__":
