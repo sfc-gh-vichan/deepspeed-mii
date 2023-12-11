@@ -200,8 +200,8 @@ def run_mii_benchmarks(
         # Generate warmup prompts.
         prompts = (
             prompt_generator.generate(
-                average_token=2560,
-                variance=2560*0.3,
+                average_token=max(prompt_length_list),
+                variance=max(prompt_length_list)*0.3,
                 max_token=MAX_SEQUENCE_LENGTH-max_new_tokens,
                 n=warmup,
                 show_progress=True,
