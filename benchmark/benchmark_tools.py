@@ -72,7 +72,8 @@ def summarize_chat_benchmarks(
     avg_time_to_first_token = avg_float([benchmark.time_to_first_token for benchmark in benchmarks])
     max_time_to_first_token = max([benchmark.time_to_first_token for benchmark in benchmarks])
 
-    latencies = [benchmark.latency for benchmark in benchmarks].sort()
+    latencies = [benchmark.latency for benchmark in benchmarks]
+    latencies.sort()
     min_latency = min(latencies)
     avg_latency = avg_float(latencies)
     max_latency = max(latencies)
