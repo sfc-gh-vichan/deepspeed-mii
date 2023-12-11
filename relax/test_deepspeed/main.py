@@ -99,7 +99,7 @@ if __name__ == "__main__":
         # print(callback_object.__dict__)
         print("latency: ", latency)
     except Exception as e:
-        print(repr(e))
+        pass
     finally:
         if client is not None:
             client.terminate_server()
