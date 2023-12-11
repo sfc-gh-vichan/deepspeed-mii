@@ -60,6 +60,8 @@ def summarize_chat_benchmarks(
     clients: int,
     benchmarks: List[Benchmark],
 ) -> str:
+    benchmarks = sorted(benchmarks)
+
     min_token_input = min([benchmark.max_input for benchmark in benchmarks])
     avg_token_input = avg_int([benchmark.max_input for benchmark in benchmarks])
     max_token_input = max([benchmark.max_input for benchmark in benchmarks])
