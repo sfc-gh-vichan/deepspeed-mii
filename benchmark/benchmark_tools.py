@@ -60,8 +60,6 @@ def summarize_chat_benchmarks(
     clients: int,
     benchmarks: List[Benchmark],
 ) -> str:
-    benchmarks = sorted(benchmarks)
-
     min_token_input = min([benchmark.max_input for benchmark in benchmarks])
     avg_token_input = avg_int([benchmark.max_input for benchmark in benchmarks])
     max_token_input = max([benchmark.max_input for benchmark in benchmarks])
@@ -74,13 +72,15 @@ def summarize_chat_benchmarks(
     avg_time_to_first_token = avg_float([benchmark.time_to_first_token for benchmark in benchmarks])
     max_time_to_first_token = max([benchmark.time_to_first_token for benchmark in benchmarks])
 
-    min_latency = min([benchmark.latency for benchmark in benchmarks])
-    avg_latency = avg_float([benchmark.latency for benchmark in benchmarks])
-    max_latency = max([benchmark.latency for benchmark in benchmarks])
-    p50_latency = benchmarks[int(0.5 * len(benchmarks))].latency
-    p90_latency = benchmarks[int(0.9 * len(benchmarks))].latency
-    p95_latency = benchmarks[int(0.95 * len(benchmarks))].latency
-    p99_latency = benchmarks[int(0.99 * len(benchmarks))].latency
+    latencies = [benchmark.latency for benchmark in benchmarks].sort()
+    min_latency = min(latencies)
+    avg_latency = avg_float(latencies)
+    max_latency = max(latencies)
+
+    p50_latency = latencies[int(0.5 * len(latencies))]
+    p90_latency = latencies[int(0.9 * len(latencies))]
+    p95_latency = latencies[int(0.95 * len(latencies))]
+    p99_latency = latencies[int(0.99 * len(latencies))]
 
     # print('!!!---Printing results---!!!')
     # # Output results as a csv
