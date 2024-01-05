@@ -252,7 +252,7 @@ def run_benchmarks(
             )
         elif framework == Framework.VLLM:
             proc = subprocess.Popen(f'python -m vllm.entrypoints.api_server --model={args.model} -tp={args.tensor_parallel}', shell=True)
-            time.sleep(300)
+            time.sleep(30)
 
         barrier = multiprocessing.Barrier(client_num + 1)
         query_queue = multiprocessing.Queue()
