@@ -7,6 +7,7 @@ import os
 import queue
 import random
 import requests
+import subprocess
 from transformers import AutoTokenizer
 import time
 from typing import Iterable, List
@@ -113,7 +114,7 @@ def benchmark_mii(
 
     benchmarks.append(
         OnlineBenchmark(
-            framework='mii',
+            framework=Framework.DEEPSPEED_MII,
             input_length=input_lengths,
             output_length=output_lengths,
             time_to_first_token=time_to_first_token,
@@ -172,7 +173,7 @@ def benchmark_vllm(
 
     benchmarks = ([
         OnlineBenchmark(
-            framework='vllm',
+            framework=Framework.VLLM,
             input_length=input_length,
             output_length=output_length,
             time_to_first_token=time_to_first_token,
@@ -249,6 +250,9 @@ def run_benchmarks(
                 tensor_parallel=args.tensor_parallel,
                 replica_num=1,
             )
+        elif framework == Framework.VLLM:
+            proc = subprocess.Popen(f'python -m vllm.entrypoints.api_server --model={args.model} -tp={args.tensor_parallel}', shell=True)
+            time.sleep(300)
 
         barrier = multiprocessing.Barrier(client_num + 1)
         query_queue = multiprocessing.Queue()
@@ -319,7 +323,7 @@ def run_benchmarks(
                     benchmarks.append(res)
 
                 summarization_results.append(summarize_online_benchmarks(
-                    framework="vllm",
+                    framework=args.framework,
                     token_input=prompt_length,
                     queries_per_second=queries_per_second,
                     clients=args.client_num,
