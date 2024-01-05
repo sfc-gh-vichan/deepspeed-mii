@@ -232,6 +232,7 @@ def _run_parallel(
 
 def run_benchmarks(
     client_num: int,
+    framework: str,
     model: str,
     queries_per_second_list: List[float],
     prompt_length_list: List[int],
@@ -248,7 +249,7 @@ def run_benchmarks(
             processes.append(
                 multiprocessing.Process(
                     target=_run_parallel,
-                    args=(model, barrier, query_queue, result_queue, max_new_tokens, client_num)
+                    args=(model, framework, barrier, query_queue, result_queue, max_new_tokens, client_num)
                 )
             )
         for p in processes:
