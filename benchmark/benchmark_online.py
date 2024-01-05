@@ -51,6 +51,10 @@ def parse_args():
                         type=int,
                         help="Number of clients",
                         default=64)
+    parser.add_argument('--framework',
+                        required=True,
+                        type=str,
+                        default='vllm')
     parser.add_argument("-qps",
                         "--queries_per_second",
                         type=list_of_floats,
