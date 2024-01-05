@@ -1,5 +1,5 @@
 from functools import total_ordering
-from typing import List
+from typing import Any, List
 import time
 
 class Query:
@@ -9,14 +9,56 @@ class Query:
         self.start_time = time.time()
 
 
-def avg_int(lt):
+def avg_int(lt: List[Any]) -> int:
     return sum(lt) // len(lt)
 
-def avg_float(lt):
+
+def avg_float(lt: List[Any]) -> float:
     return sum(lt) / len(lt)
 
+
 @total_ordering
-class Benchmark:
+class BatchBenchmark:
+    def __init__(self, framework, num_queries, input_length, output_length, latency, tensor_parallel):
+        self.num_queries = num_queries
+
+        self.avg_input = avg_int(input_length)
+
+        self.framework = framework
+
+        self.max_input = max(input_length)
+        self.min_input = min(input_length)
+
+        self.avg_output = avg_int(output_length)
+        self.max_output = max(output_length)
+        self.min_output = min(output_length)
+
+        self.tensor_parallel = tensor_parallel
+        self.throughput = (sum(input_length)+sum(output_length))/latency
+        self.latency = latency
+
+    def __str__(self):
+        return f'{self.framework}' \
+            f', {self.num_queries}' \
+            f', {self.avg_input}, {self.min_input}, {self.max_input}' \
+            f', {self.avg_output}, {self.min_output}, {self.max_output}' \
+            f', {self.latency: .2f}' \
+            f', {self.throughput: .2f}' \
+            f', {self.tensor_parallel}'
+
+    def __lt__(self, other):
+        if self.num_queries != other.num_queries:
+            return self.num_queries < other.num_queries
+        if self.avg_input != other.avg_input:
+            return self.avg_input < other.avg_input
+        if self.tensor_parallel != other.tensor_parallel:
+            return self.tensor_parallel < other.tensor_parallel
+        if self.framework != other.framework:
+            return self.framework < other.framework
+
+
+@total_ordering
+class OnlineBenchmark:
     def __init__(self, framework, input_length, output_length, time_to_first_token, latency, tensor_parallel):
 
         self.avg_input = avg_int(input_length)
@@ -53,12 +95,12 @@ class Benchmark:
             return self.framework < other.framework
 
 
-def summarize_chat_benchmarks(
+def summarize_online_benchmarks(
     framework: str,
     token_input: int,
     queries_per_second: int,
     clients: int,
-    benchmarks: List[Benchmark],
+    benchmarks: List[OnlineBenchmark],
 ) -> str:
     min_token_input = min([benchmark.max_input for benchmark in benchmarks])
     avg_token_input = avg_int([benchmark.max_input for benchmark in benchmarks])

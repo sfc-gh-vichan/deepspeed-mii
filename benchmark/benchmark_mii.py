@@ -7,7 +7,7 @@ import random
 import threading
 import time
 from typing import List
-from benchmark_tools import Benchmark, Query, summarize_chat_benchmarks
+from benchmark_tools import OnlineBenchmark, Query, summarize_online_benchmarks
 from common_arg_types import list_of_floats, list_of_ints
 
 import mii
@@ -17,7 +17,7 @@ MAX_SEQUENCE_LENGTH = 4096
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Benchmark inference")
+    parser = argparse.ArgumentParser(description="OnlineBenchmark inference")
     parser.add_argument("-k",
                         "--max_new_tokens",
                         type=int,
@@ -69,7 +69,7 @@ def benchmark_mii(
     prompts: List[str],
     max_new_tokens: int,
     start_time: float,
-) -> List[Benchmark]:
+) -> List[OnlineBenchmark]:
     benchmarks = []
     callback_obj = CallbackObject()
 
@@ -97,7 +97,7 @@ def benchmark_mii(
     output_lengths.append(callback_obj.responses[-1].generated_length)
 
     benchmarks.append(
-        Benchmark(
+        OnlineBenchmark(
             framework='mii',
             input_length=input_lengths,
             output_length=output_lengths,
@@ -248,7 +248,7 @@ def run_mii_benchmarks(
                     res = result_queue.get(block=True)
                     benchmarks.append(res)
 
-                summarization_results.append(summarize_chat_benchmarks(
+                summarization_results.append(summarize_online_benchmarks(
                     framework="mii",
                     token_input=prompt_length,
                     queries_per_second=queries_per_second,

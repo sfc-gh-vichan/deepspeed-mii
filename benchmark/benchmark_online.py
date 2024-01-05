@@ -1,20 +1,26 @@
 import argparse
 import asyncio
-import gc
+from enum import Enum
 import json
+import multiprocessing
 import os
 import queue
 import random
-import time
-from typing import Iterable, List
 import requests
 from transformers import AutoTokenizer
+import time
+from typing import Iterable, List
+
 from benchmark_tools import OnlineBenchmark, Query, summarize_online_benchmarks
-import threading
-import multiprocessing
 from common_arg_types import list_of_floats, list_of_ints
 
 from prompt_generator import PromptsGenerator
+
+
+class Framework(str, Enum):
+    DEEPSPEED_MII = "mii"
+    VLLM = "vllm"
+
 
 MAX_SEQUENCE_LENGTH = 4096
 
@@ -45,11 +51,6 @@ def parse_args():
                         type=int,
                         help="Number of clients",
                         default=64)
-    parser.add_argument("-t",
-                        "--use_thread",
-                        action="store_true",
-                        help="use thread for clients, else multiprocessing",
-                        default=False)
     parser.add_argument("-qps",
                         "--queries_per_second",
                         type=list_of_floats,
@@ -61,12 +62,60 @@ def parse_args():
     return args
 
 
+args = parse_args()
+
+
 class CallbackObject:
     def __init__(self):
         self.start_time = time.time()
         self.responses = []
         self.first = True
         self.first_token_time = 0.0
+
+
+def benchmark_mii(
+    client,
+    prompts: List[str],
+    max_new_tokens: int,
+    start_time: float,
+) -> List[OnlineBenchmark]:
+    benchmarks = []
+    callback_obj = CallbackObject()
+
+    def callback(response):
+        if callback_obj.first:
+            callback_obj.first_token_time = time.time()
+            callback_obj.first = False
+        callback_obj.responses.append(response[0])
+
+    client.generate(
+        prompts=prompts,
+        streaming_fn=callback,
+        do_sample=False,
+        top_p=1.0,
+        max_new_tokens=max_new_tokens
+    )
+    end_time = time.time()
+    time_to_first_token = callback_obj.first_token_time - start_time
+    latency = end_time - start_time
+
+    input_lengths = []
+    output_lengths = []
+
+    input_lengths.append(callback_obj.responses[-1].prompt_length)
+    output_lengths.append(callback_obj.responses[-1].generated_length)
+
+    benchmarks.append(
+        OnlineBenchmark(
+            framework='mii',
+            input_length=input_lengths,
+            output_length=output_lengths,
+            time_to_first_token=time_to_first_token,
+            latency=latency,
+            tensor_parallel=args.tensor_parallel,
+        )
+    )
+    return benchmarks
 
 
 def benchmark_vllm(
@@ -93,9 +142,9 @@ def benchmark_vllm(
         for chunk in response.iter_lines(chunk_size=8192, decode_unicode=False,
                                         delimiter=b"\0"):
             if chunk:
+                time_now = time.time()
                 data = json.loads(chunk.decode("utf-8"))
                 output = data["text"][0]
-                time_now = time.time()
                 yield output, time_now - time_last_token
                 time_last_token = time_now
 
@@ -122,25 +171,29 @@ def benchmark_vllm(
             output_length=output_length,
             time_to_first_token=time_to_first_token,
             latency=latency,
-            tensor_parallel=8,
+            tensor_parallel=args.tensor_parallel,
         )
     ])
 
     return benchmarks
-    
 
-def _run_vllm_parallel(
-    model,
-    barrier,
-    query_queue,
-    result_queue,
-    max_new_tokens,
-    client_num,
-):
+
+def _run_parallel(
+    model: str,
+    framework: str,
+    barrier: multiprocessing.Barrier,
+    query_queue: multiprocessing.Queue,
+    result_queue: multiprocessing.Queue,
+    max_new_tokens: int,
+    client_num: int,
+) -> None:
     pid = os.getpid()
-    session_id = f"test_session_p{pid}_t{threading.get_ident()}"
     event_loop = asyncio.new_event_loop()
     asyncio.set_event_loop(event_loop)
+
+    if framework == Framework.DEEPSPEED_MII:
+        import mii
+        client = mii.client(model)
 
     barrier.wait()
 
@@ -149,7 +202,10 @@ def _run_vllm_parallel(
         while True:
             query = query_queue.get(timeout=1)
             print(f"warmup queue size: {query_queue.qsize()} ({pid})", flush=True)
-            benchmark_vllm(model=model, prompts=[query.prompt], max_new_tokens=max_new_tokens, query=query)
+            if framework == Framework.DEEPSPEED_MII:
+                benchmark_mii(client=client, prompts=[query.prompt], max_new_tokens=max_new_tokens, start_time=query.start_time)
+            elif framework == Framework.VLLM:
+                benchmark_vllm(model=model, prompts=[query.prompt], max_new_tokens=max_new_tokens, query=query)
     except queue.Empty:
         pass
 
@@ -158,44 +214,36 @@ def _run_vllm_parallel(
     time.sleep(random.uniform(0, client_num) * 0.01)
     while True:
         try:
-            query = query_queue.get(timeout=30)
+            query = query_queue.get(timeout=300)
             if len(query.prompt) == 0:
                 break
-            benchmarks = benchmark_vllm(model=model, prompts=[query.prompt], max_new_tokens=max_new_tokens, query=query)
+            if framework == Framework.DEEPSPEED_MII:
+                benchmarks = benchmark_mii(client=client, prompts=[query.prompt], max_new_tokens=max_new_tokens, start_time=query.start_time)
+            elif framework == Framework.VLLM:
+                benchmarks = benchmark_vllm(model=model, prompts=[query.prompt], max_new_tokens=max_new_tokens, query=query)
             [result_queue.put(benchmark) for benchmark in benchmarks]
         except queue.Empty:
             pass
 
 
-def run_vllm_benchmarks(
+def run_benchmarks(
     client_num: int,
-    use_thread: bool,
     model: str,
     queries_per_second_list: List[float],
     prompt_length_list: List[int],
     max_new_tokens: int,
     warmup: int,
 ) -> List[OnlineBenchmark]:
-    try:
-        # Start threads/processes for # of clients
-        if use_thread:
-            runnable_cls = threading.Thread
-            barrier_cls = threading.Barrier
-            queue_cls = queue.Queue
-        else:
-            runnable_cls = multiprocessing.Process
-            barrier_cls = multiprocessing.Barrier
-            queue_cls = multiprocessing.Queue
-        
-        barrier = barrier_cls(client_num + 1)
-        query_queue = queue_cls()
-        result_queue = queue_cls()
+    try:        
+        barrier = multiprocessing.Barrier(client_num + 1)
+        query_queue = multiprocessing.Queue()
+        result_queue = multiprocessing.Queue()
 
         processes = []
         for _ in range(client_num):
             processes.append(
-                runnable_cls(
-                    target=_run_vllm_parallel,
+                multiprocessing.Process(
+                    target=_run_parallel,
                     args=(model, barrier, query_queue, result_queue, max_new_tokens, client_num)
                 )
             )
@@ -274,15 +322,14 @@ def run_vllm_benchmarks(
 
 
 if __name__ ==  "__main__":
-    args = parse_args()
     print('\n=============== Argument ===============')
     for key in vars(args):
         print('{}: {}'.format(key, vars(args)[key]))
     print('========================================')
 
-    benchmarks = run_vllm_benchmarks(
+    benchmarks = run_benchmarks(
         client_num=args.client_num,
-        use_thread=args.use_thread,
+        framework=args.framework,
         model=args.model,
         queries_per_second_list=args.queries_per_second,
         prompt_length_list=args.prompt_length,
