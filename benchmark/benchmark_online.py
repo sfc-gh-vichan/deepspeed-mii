@@ -241,6 +241,7 @@ def run_benchmarks(
     max_new_tokens: int,
     warmup: int,
 ) -> List[OnlineBenchmark]:
+    proc = None
     try:
         # Start mii server
         if framework == Framework.DEEPSPEED_MII:
@@ -252,7 +253,18 @@ def run_benchmarks(
             )
         elif framework == Framework.VLLM:
             proc = subprocess.Popen(f'python -m vllm.entrypoints.api_server --model={args.model} -tp={args.tensor_parallel}', shell=True, stdout=subprocess.DEVNULL)
-            time.sleep(30)
+            ready = False
+            proc_start_time = time.time()
+            timeout_secs = 300
+            # Model should be loaded within timeout_secs, abort if not the case.
+            while time.time() - proc_start_time < timeout_secs:
+                if os.system("ping -c 1 http://localhost:8000") == 0:
+                    ready = True
+                    break
+                time.sleep(1)
+            if not ready:
+                raise ValueError(f"Unable to load {args.model} in vllm within {timeout_secs} seconds.")
+            
 
         barrier = multiprocessing.Barrier(client_num + 1)
         query_queue = multiprocessing.Queue()
@@ -338,6 +350,9 @@ def run_benchmarks(
 
     except Exception as e:
         raise e
+    finally:
+        if proc is not None:
+            proc.terminate()
 
 
 if __name__ ==  "__main__":
