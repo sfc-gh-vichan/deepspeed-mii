@@ -1,4 +1,5 @@
 import csv
+from typing import Tuple
 
 import numpy as np
 from tqdm import tqdm
@@ -6,7 +7,7 @@ from transformers import AutoTokenizer
 
 
 class PromptsGenerator:
-    def __init__(self, tokenizer_path):
+    def __init__(self, tokenizer_path: str):
         self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_path)
 
         self.texts = []
@@ -22,7 +23,7 @@ Please summarize the text that is given. Return just the summary and no addition
         self.prompt_template_length = len(self.tokenizer.encode(prompt_template))
         np.random.seed(37)
 
-    def generate(self, average_token, variance, max_token, n, show_progress=False):
+    def generate(self, average_token: int, variance: float, max_token: int, n: int, show_progress=False) -> Tuple[str, int]:
         if n <= 0:
             return []
         prompts = []
