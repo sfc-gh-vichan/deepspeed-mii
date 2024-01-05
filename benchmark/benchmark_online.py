@@ -243,7 +243,6 @@ def run_benchmarks(
 ) -> List[OnlineBenchmark]:
     proc = None
     try:
-        # Start mii server
         if framework == Framework.DEEPSPEED_MII:
             mii.serve(
                 model_name_or_path=model,
@@ -264,6 +263,7 @@ def run_benchmarks(
                 time.sleep(1)
             if not ready:
                 raise ValueError(f"Unable to load {args.model} in vllm within {timeout_secs} seconds.")
+        print(f"{framework} loaded model {model}")
             
 
         barrier = multiprocessing.Barrier(client_num + 1)
