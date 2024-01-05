@@ -240,7 +240,16 @@ def run_benchmarks(
     max_new_tokens: int,
     warmup: int,
 ) -> List[OnlineBenchmark]:
-    try:        
+    try:
+        # Start mii server
+        if framework == Framework.DEEPSPEED_MII:
+            mii.serve(
+                model_name_or_path=model,
+                deployment_name=model,
+                tensor_parallel=args.tensor_parallel,
+                replica_num=1,
+            )
+
         barrier = multiprocessing.Barrier(client_num + 1)
         query_queue = multiprocessing.Queue()
         result_queue = multiprocessing.Queue()
