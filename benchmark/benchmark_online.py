@@ -67,6 +67,8 @@ def parse_args():
 
 
 args = parse_args()
+if args.framework == Framework.DEEPSPEED_MII:
+    import mii
 
 
 class CallbackObject:
@@ -196,7 +198,6 @@ def _run_parallel(
     asyncio.set_event_loop(event_loop)
 
     if framework == Framework.DEEPSPEED_MII:
-        import mii
         client = mii.client(model)
 
     barrier.wait()
