@@ -13,17 +13,23 @@ import time
 from typing import Iterable, List
 
 from benchmark_tools import OnlineBenchmark, Query, summarize_online_benchmarks
-from common_arg_types import list_of_floats, list_of_ints
 
 from prompt_generator import PromptsGenerator
 
+
+MAX_SEQUENCE_LENGTH = 4096
 
 class Framework(str, Enum):
     DEEPSPEED_MII = "mii"
     VLLM = "vllm"
 
 
-MAX_SEQUENCE_LENGTH = 4096
+def list_of_floats(arg):
+    return list(map(float, arg.split(',')))
+
+
+def list_of_ints(arg):
+    return list(map(int, arg.split(',')))
 
 
 def parse_args():
