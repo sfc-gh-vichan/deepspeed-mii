@@ -257,7 +257,7 @@ def run_benchmarks(
             timeout_secs = 300
             # Model should be loaded within timeout_secs, abort if not the case.
             while time.time() - proc_start_time < timeout_secs:
-                response = requests.post("http://localhost:8000/generate")
+                response = requests.post("http://localhost:8000/generate", headers = {"User-Agent": "OnlineBenchmark Client"})
                 print(repr(response))
                 time.sleep(1)
             if not ready:
