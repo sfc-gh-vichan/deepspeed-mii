@@ -253,7 +253,7 @@ def run_benchmarks(
             proc = subprocess.Popen(f'python -m vllm.entrypoints.api_server --model={args.model} -tp={args.tensor_parallel}', shell=True, stdout=subprocess.DEVNULL)
             ready = False
             proc_start_time = time.time()
-            timeout_secs = 300
+            timeout_secs = 1
             # Model should be loaded within timeout_secs, abort if not the case.
             while time.time() - proc_start_time < timeout_secs:
                 try:
