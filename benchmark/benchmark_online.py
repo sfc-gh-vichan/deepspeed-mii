@@ -257,7 +257,7 @@ def run_benchmarks(
             # Model should be loaded within timeout_secs, abort if not the case.
             while time.time() - proc_start_time < timeout_secs:
                 try:
-                    response = requests.head("http://localhost:8000/generate")
+                    response = requests.post("http://localhost:8000/generate")
                     print(repr(response))
                 except:
                     pass
