@@ -256,8 +256,11 @@ def run_benchmarks(
             timeout_secs = 300
             # Model should be loaded within timeout_secs, abort if not the case.
             while time.time() - proc_start_time < timeout_secs:
-                response = requests.head("http://localhost:8000/generate")
-                print(repr(response))
+                try:
+                    response = requests.head("http://localhost:8000/generate")
+                    print(repr(response))
+                except:
+                    pass
                 time.sleep(1)
             if not ready:
                 raise ValueError(f"Unable to load {args.model} in vllm within {timeout_secs} seconds.")
