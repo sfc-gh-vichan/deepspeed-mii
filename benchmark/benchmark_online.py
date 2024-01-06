@@ -259,7 +259,7 @@ def run_benchmarks(
             while time.time() - proc_start_time < timeout_secs:
                 response = requests.post("http://localhost:8000/generate", headers = {"User-Agent": "OnlineBenchmark Client"})
                 print(repr(response))
-                time.sleep(1)
+                time.sleep(20)
             if not ready:
                 raise ValueError(f"Unable to load {args.model} in vllm within {timeout_secs} seconds.")
         print(f"{framework} loaded model {model}")
