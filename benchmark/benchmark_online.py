@@ -132,7 +132,6 @@ def benchmark_vllm(
     query: Query,
 ) -> List[OnlineBenchmark]:
     api_url = "http://localhost:8000/generate"
-    headers = {"User-Agent": "OnlineBenchmark Client"}
     pload = {
         "prompt": prompts[0],
         "n": 1,
@@ -155,7 +154,7 @@ def benchmark_vllm(
                 yield output, time_now - time_last_token
                 time_last_token = time_now
 
-    response = requests.post(api_url, headers=headers, json=pload, stream=True)
+    response = requests.post(api_url, json=pload, stream=True)
     token_gen_time = []
     last_response = ""
     for h, t in get_streaming_response(response, query.start_time):
@@ -257,9 +256,9 @@ def run_benchmarks(
             timeout_secs = 300
             # Model should be loaded within timeout_secs, abort if not the case.
             while time.time() - proc_start_time < timeout_secs:
-                response = requests.post("http://localhost:8000/generate", headers = {"User-Agent": "OnlineBenchmark Client"})
+                response = requests.head("http://localhost:8000/generate")
                 print(repr(response))
-                time.sleep(20)
+                time.sleep(1)
             if not ready:
                 raise ValueError(f"Unable to load {args.model} in vllm within {timeout_secs} seconds.")
         print(f"{framework} loaded model {model}")
